@@ -1,0 +1,5 @@
+$dokka.format:html
+$dokka.linkExtension:html
+
+com.geotab.mobile.sdk.models.publicModels
+com.geotab.mobile.sdk.publicInterfaces
