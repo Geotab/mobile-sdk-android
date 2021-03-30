@@ -1,0 +1,21 @@
+<HTML>
+<HEAD>
+<meta charset="UTF-8">
+<title>DriveSdk.setLoginRequiredCallback - geotabdrivesdk</title>
+<link rel="stylesheet" href="../../../style.css">
+</HEAD>
+<BODY>
+<a href="../../index.html">geotabdrivesdk</a>&nbsp;/&nbsp;<a href="../index.html">com.geotab.mobile.sdk</a>&nbsp;/&nbsp;<a href="index.html">DriveSdk</a>&nbsp;/&nbsp;<a href="./set-login-required-callback.html">setLoginRequiredCallback</a><br/>
+<br/>
+<h1>setLoginRequiredCallback</h1>
+<a name="com.geotab.mobile.sdk.DriveSdk$setLoginRequiredCallback(kotlin.Function1((com.geotab.mobile.sdk.models.LoginRequiredArgument, kotlin.Unit)))"></a>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setLoginRequiredCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.DriveSdk$setLoginRequiredCallback(kotlin.Function1((com.geotab.mobile.sdk.models.LoginRequiredArgument, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<a href="../../com.geotab.mobile.sdk.module.user/-login-required-callback-type.html"><span class="identifier">LoginRequiredCallbackType</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code>
+<p>Set a callback to listen for session changes. That includes: no session, invalid session, session expired, co-driver login is requested.
+There are three defined values and variance of different error messages that could be passed in the callback.</p>
+<ul><li>"", empty string, indicates no login required or login is successful, or the login is in progress. At this state, implementor should present the DriveViewController/Fragment.</li>
+<li>"LoginRequired": indicates the login UI is going to show a login form (No valid user is available or the current activeSession is expired/invalid). At this state, implementor presents their own login screen.</li>
+<li>"AddCoDriver": indicates that a co-driver login is requested. At this state, implementor presents their own co-driver login screen.</li>
+<li>"", any other error messages. At this state, implementor presents its own login screen.</li>
+</ul>
+</BODY>
+</HTML>
