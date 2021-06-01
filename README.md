@@ -5,18 +5,42 @@
 tbd  
 
 ## Adding the Geotab Mobile SDK as a dependency  
+Geotab Mobile SDK can be added as gradle dependency, which is hosted in GitHub private repository. Users need to be added to the repository (https://github.com/Geotab/drive-sdk-android) to access the library.
+Update build.gradle inside the app module with the Geotab Mobile SDK's Github repository path and credentials.
 
-Import the module File->New->New Module  
-- select "Import .JAR/.AAR Package"
+``` Groovy
+repositories {
+    /**
+     * Create local.properties in root project folder file.
+     * Add properties gpr.usr=GITHUB_USERID and gpr.key=PERSONAL_ACCESS_TOKEN.
+     * Replace GITHUB_USERID with Github User ID and PEROSNAL_ACCESS_TOKEN with a personal access token for this user.
+     */
+    File localPropertiesFile = rootProject.file("local.properties")
+    Properties localProperties = new Properties()
+    if (localPropertiesFile.exists()) {
+        localProperties.load(localPropertiesFile.newDataInputStream())
+    }
 
-Add the following dependencies to your app build.gradle file
-```Groovy
-implementation project(path: ':geotabdrivesdk-release')
-implementation 'androidx.fragment:fragment-ktx:1.3.0-alpha06'
-implementation 'com.github.spullara.mustache.java:compiler:0.8.18'
-implementation 'androidx.exifinterface:exifinterface:1.3.1'
-implementation 'com.google.code.gson:gson:2.8.6'
+    maven {
+        name = "GitHubPackages"
+        url = uri {"https://maven.pkg.github.com/geotab/drive-sdk-android"}
+        credentials {
+            username = localProperties["gpr.usr"]
+            password = localProperties["gpr.key"]
+        }
+    }
+}
 ```
+check [this](https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-token) to create a personal access token, from the user account.
+
+Add the Geotab Mobile SDK library under the dependencies, to the application's build gradle.
+``` Groovy
+dependencies {
+    implementation 'com.geotab.mobile.sdk:drive-sdk:1.0.2047'
+}
+```
+Sync project with Gradle files to ensure the dependencies are resolved.
+
 ## Initialization
 
 The DriveFragment is the starting point of integrating mobile SDK. It's the container of the Geotab Drive Web app equipped with native APIs for accessing Geotab Drive web app's data
