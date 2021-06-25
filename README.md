@@ -31,7 +31,7 @@ repositories {
     }
 }
 ```
-check [this](https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-token) to create a personal access token, from the user account.
+check [this](https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-token) to create a personal access token, from the user account. Select the `read:packages` option when selecting your token's scope.
 
 Add the Geotab Mobile SDK library under the dependencies, to the application's build gradle.
 ``` Groovy
