@@ -18,7 +18,7 @@
 </td>
 <td>
 <p>Charging state of the Android device</p>
-<code><span class="keyword">abstract</span> <span class="keyword">val </span><span class="identifier">isCharging</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html"><span class="identifier">Boolean</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">val </span><span class="identifier">isCharging</span><span class="symbol">: </span><span class="identifier">Boolean</span></code></td>
 </tr>
 <tr>
 <td>
@@ -26,7 +26,7 @@
 </td>
 <td>
 <p>Callback to inform that the Web application can't be loaded, due to network failure.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">var </span><span class="identifier">webAppLoadFailed</span><span class="symbol">: </span><span class="symbol">(</span><span class="symbol">(</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">?</span></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">var </span><span class="identifier">webAppLoadFailed</span><span class="symbol">: </span><span class="symbol">(</span><span class="symbol">(</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">?</span></code></td>
 </tr>
 </tbody>
 </table>
@@ -39,7 +39,7 @@
 </td>
 <td>
 <p>Cancels the co-driver login view and go back to the drive view</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">cancelLogin</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">cancelLogin</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -47,7 +47,7 @@
 </td>
 <td>
 <p>Clears the previously set driverActionNecessary callback.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearDriverActionNecessaryCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearDriverActionNecessaryCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -55,7 +55,7 @@
 </td>
 <td>
 <p>Clears the previously set "last server address" callback</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearLastServerAddressUpdatedCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearLastServerAddressUpdatedCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -63,7 +63,7 @@
 </td>
 <td>
 <p>Clears the previously set loginRequired callback.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearLoginRequiredCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearLoginRequiredCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -71,7 +71,7 @@
 </td>
 <td>
 <p>Clears the previously set pageNavigation callback.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearPageNavigationCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">clearPageNavigationCallback</span><span class="symbol">(</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -79,7 +79,7 @@
 </td>
 <td>
 <p>Returns all users, including the active driver and co-drivers</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getAllUsers</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getAllUsers(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Array((com.geotab.mobile.sdk.models.publicModels.User)))), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html"><span class="identifier">Array</span></a><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">&gt;</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getAllUsers</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getAllUsers(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Array((com.geotab.mobile.sdk.models.publicModels.User)))), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><span class="identifier">Array</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">&gt;</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -87,7 +87,7 @@
 </td>
 <td>
 <p>Returns the active driver's availability hours</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getAvailability</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getAvailability(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.DutyStatusAvailability)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-duty-status-availability/index.html"><span class="identifier">DutyStatusAvailability</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getAvailability</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getAvailability(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.DutyStatusAvailability)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-duty-status-availability/index.html"><span class="identifier">DutyStatusAvailability</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -95,7 +95,7 @@
 </td>
 <td>
 <p>Returns the configuration of the active driver's current hours of service rule</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getHosRuleSet</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getHosRuleSet(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.HosRuleSet)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-hos-rule-set/index.html"><span class="identifier">HosRuleSet</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getHosRuleSet</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getHosRuleSet(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.HosRuleSet)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-hos-rule-set/index.html"><span class="identifier">HosRuleSet</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -103,7 +103,7 @@
 </td>
 <td>
 <p>Returns properties of the GO Device</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateDevice</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateDevice(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.GoDevice)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-go-device/index.html"><span class="identifier">GoDevice</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateDevice</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateDevice(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.GoDevice)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-go-device/index.html"><span class="identifier">GoDevice</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -111,7 +111,7 @@
 </td>
 <td>
 <p>Returns the communication status of the GO Device</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateDeviceCommunicating</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateDeviceCommunicating(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Boolean)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html"><span class="identifier">Boolean</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateDeviceCommunicating</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateDeviceCommunicating(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Boolean)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><span class="identifier">Boolean</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -119,7 +119,7 @@
 </td>
 <td>
 <p>Returns the driving status of the GO Device</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateDriving</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateDriving(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Boolean)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html"><span class="identifier">Boolean</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateDriving</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateDriving(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Boolean)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><span class="identifier">Boolean</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -127,7 +127,7 @@
 </td>
 <td>
 <p>Returns the GPS connection state of the GO Device</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateGpsConnected</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateGpsConnected(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Boolean)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html"><span class="identifier">Boolean</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getStateGpsConnected</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getStateGpsConnected(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Boolean)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><span class="identifier">Boolean</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -135,7 +135,7 @@
 </td>
 <td>
 <p>Return the user in the driver seat</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getUser</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getUser(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.User)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getUser</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getUser(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.User)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -143,7 +143,7 @@
 </td>
 <td>
 <p>Returns all the violations the active driver has since the start of their cycle</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getUserViolations</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getUserViolations(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Array((com.geotab.mobile.sdk.models.publicModels.DutyStatusViolation)))), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html"><span class="identifier">Array</span></a><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-duty-status-violation/index.html"><span class="identifier">DutyStatusViolation</span></a><span class="symbol">&gt;</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getUserViolations</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getUserViolations(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.Array((com.geotab.mobile.sdk.models.publicModels.DutyStatusViolation)))), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><span class="identifier">Array</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-duty-status-violation/index.html"><span class="identifier">DutyStatusViolation</span></a><span class="symbol">&gt;</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -153,7 +153,7 @@
 <p><code>driverActionNecessary</code> is a list of events that occur in our app where the application owner needs to bring the Drive app activity UI to the foreground.
 Example: "Your vehicle has been selected by another driver. You now need to select a vehicle".
 Set a callback to listen for driverActionNecessary events.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setDriverActionNecessaryCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setDriverActionNecessaryCallback(kotlin.Function1((com.geotab.mobile.sdk.models.DriverActionNecessaryArgument, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">DriverActionNecessaryCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setDriverActionNecessaryCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setDriverActionNecessaryCallback(kotlin.Function1((com.geotab.mobile.sdk.models.DriverActionNecessaryArgument, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">DriverActionNecessaryCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -164,7 +164,7 @@ Set a callback to listen for driverActionNecessary events.</p>
 <li>only works with <a href="../../com.geotab.mobile.sdk.models.public-models/-user/id.html">User.id</a> that are logged in</li>
 <li>tries to perform a Set API call, or updates local database if offline</li>
 </ul>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setDriverSeat</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setDriverSeat(com.geotab.mobile.sdk.models.publicModels.User, kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.User)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/driver">driver</span><span class="symbol">:</span>&nbsp;<a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">, </span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setDriverSeat(com.geotab.mobile.sdk.models.publicModels.User, kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.User)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setDriverSeat</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setDriverSeat(com.geotab.mobile.sdk.models.publicModels.User, kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.User)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/driver">driver</span><span class="symbol">:</span>&nbsp;<a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">, </span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setDriverSeat(com.geotab.mobile.sdk.models.publicModels.User, kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((com.geotab.mobile.sdk.models.publicModels.User)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">CallbackTypeWith</span><span class="symbol">&lt;</span><a href="../../com.geotab.mobile.sdk.models.public-models/-user/index.html"><span class="identifier">User</span></a><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -173,7 +173,7 @@ Set a callback to listen for driverActionNecessary events.</p>
 <td>
 <p>Set a callback to listen for "last server address" change event.
 LastServerUpdatedCallbackType is a function with the new server address as the argument.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setLastServerAddressUpdatedCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setLastServerAddressUpdatedCallback(kotlin.Function1((kotlin.String, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">LastServerUpdatedCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setLastServerAddressUpdatedCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setLastServerAddressUpdatedCallback(kotlin.Function1((kotlin.String, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">LastServerUpdatedCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -182,7 +182,7 @@ LastServerUpdatedCallbackType is a function with the new server address as the a
 <td>
 <p>Set a callback to listen for session changes. That includes: no session, invalid session, session expired, co-driver login is requested.
 There are three defined values and variance of different error messages that could be passed in the callback.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setLoginRequiredCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setLoginRequiredCallback(kotlin.Function1((com.geotab.mobile.sdk.models.LoginRequiredArgument, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">LoginRequiredCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setLoginRequiredCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setLoginRequiredCallback(kotlin.Function1((com.geotab.mobile.sdk.models.LoginRequiredArgument, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">LoginRequiredCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -191,7 +191,7 @@ There are three defined values and variance of different error messages that cou
 <td>
 <p>pageNavigation event indicates any navigation changes by the driver in Geotab Drive.
 Set a callback to listen for Web Drive's page navigation changes.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setPageNavigationCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setPageNavigationCallback(kotlin.Function1((kotlin.String, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">PageNavigationCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setPageNavigationCallback</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setPageNavigationCallback(kotlin.Function1((kotlin.String, kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="identifier">PageNavigationCallbackType</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -199,7 +199,7 @@ Set a callback to listen for Web Drive's page navigation changes.</p>
 </td>
 <td>
 <p>Sets a valid session credential obtained from calling MyGeotab Login API. Set isCoDriver to true if you are adding co-driver.</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setSession</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setSession(com.geotab.mobile.sdk.models.publicModels.CredentialResult, kotlin.Boolean)/credentialResult">credentialResult</span><span class="symbol">:</span>&nbsp;<a href="../../com.geotab.mobile.sdk.models.public-models/-credential-result/index.html"><span class="identifier">CredentialResult</span></a><span class="symbol">, </span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setSession(com.geotab.mobile.sdk.models.publicModels.CredentialResult, kotlin.Boolean)/isCoDriver">isCoDriver</span><span class="symbol">:</span>&nbsp;<a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html"><span class="identifier">Boolean</span></a>&nbsp;<span class="symbol">=</span>&nbsp;false<span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setSession</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setSession(com.geotab.mobile.sdk.models.publicModels.CredentialResult, kotlin.Boolean)/credentialResult">credentialResult</span><span class="symbol">:</span>&nbsp;<a href="../../com.geotab.mobile.sdk.models.public-models/-credential-result/index.html"><span class="identifier">CredentialResult</span></a><span class="symbol">, </span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setSession(com.geotab.mobile.sdk.models.publicModels.CredentialResult, kotlin.Boolean)/isCoDriver">isCoDriver</span><span class="symbol">:</span>&nbsp;<span class="identifier">Boolean</span>&nbsp;<span class="symbol">=</span>&nbsp;false<span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 <tr>
 <td>
@@ -207,7 +207,7 @@ Set a callback to listen for Web Drive's page navigation changes.</p>
 </td>
 <td>
 <p>Sets the <a href="../-speech-engine/index.html">SpeechEngine</a> used by the SpeechModule</p>
-<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setSpeechEngine</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setSpeechEngine(com.geotab.mobile.sdk.publicInterfaces.SpeechEngine)/speechEngine">speechEngine</span><span class="symbol">:</span>&nbsp;<a href="../-speech-engine/index.html"><span class="identifier">SpeechEngine</span></a><span class="symbol">)</span><span class="symbol">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html"><span class="identifier">Unit</span></a></code></td>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">setSpeechEngine</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$setSpeechEngine(com.geotab.mobile.sdk.publicInterfaces.SpeechEngine)/speechEngine">speechEngine</span><span class="symbol">:</span>&nbsp;<a href="../-speech-engine/index.html"><span class="identifier">SpeechEngine</span></a><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code></td>
 </tr>
 </tbody>
 </table>

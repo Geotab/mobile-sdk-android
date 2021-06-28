@@ -5,7 +5,7 @@
 tbd  
 
 ## Adding the Geotab Mobile SDK as a dependency  
-Geotab Mobile SDK can be added as gradle dependency, which is hosted in GitHub private repository. Users need to be added to the repository (https://github.com/Geotab/drive-sdk-android) to access the library.
+Geotab Mobile SDK can be added as gradle dependency, which is hosted in GitHub private repository. Users need to be added to the repository (https://github.com/Geotab/mobile-sdk-android) to access the library.
 Update build.gradle inside the app module with the Geotab Mobile SDK's Github repository path and credentials.
 
 ``` Groovy
@@ -23,7 +23,7 @@ repositories {
 
     maven {
         name = "GitHubPackages"
-        url = uri {"https://maven.pkg.github.com/geotab/drive-sdk-android"}
+        url = uri {"https://maven.pkg.github.com/geotab/mobile-sdk-android"}
         credentials {
             username = localProperties["gpr.usr"]
             password = localProperties["gpr.key"]
@@ -36,7 +36,7 @@ check [this](https://docs.github.com/en/github/authenticating-to-github/keeping-
 Add the Geotab Mobile SDK library under the dependencies, to the application's build gradle.
 ``` Groovy
 dependencies {
-    implementation 'com.geotab.mobile.sdk:drive-sdk:1.0.2047'
+    implementation 'com.geotab.mobile.sdk:mobile-sdk-android:$sdk_version'
 }
 ```
 Sync project with Gradle files to ensure the dependencies are resolved.
