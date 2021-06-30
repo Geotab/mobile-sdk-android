@@ -13,7 +13,7 @@ repositories {
     /**
      * Create local.properties in root project folder file.
      * Add properties gpr.usr=GITHUB_USERID and gpr.key=PERSONAL_ACCESS_TOKEN.
-     * Replace GITHUB_USERID with Github User ID and PEROSNAL_ACCESS_TOKEN with a personal access token for this user.
+     * Replace GITHUB_USERID with Github User ID and PERSONAL_ACCESS_TOKEN with a personal access token for this user.
      */
     File localPropertiesFile = rootProject.file("local.properties")
     Properties localProperties = new Properties()
