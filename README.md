@@ -1,8 +1,7 @@
 # Getting Started 
 
 ## License
-
-tbd  
+GeotabDriveSDK is available under the MIT license. See the LICENSE file for more info. 
 
 ## Adding the Geotab Mobile SDK as a dependency  
 Geotab Mobile SDK can be added as gradle dependency, which is hosted in GitHub private repository. Users need to be added to the repository (https://github.com/Geotab/mobile-sdk-android) to access the library.
@@ -86,7 +85,7 @@ driveView.getUserViolations { result ->
 }
 ```  
 
-For a complete list of APIs see [public-apis.md](./public-apis.md)
+For a complete list of APIs see [geotabdrivesdk](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/index.html)
 
 ## Set a Callback listener
 ```kotlin
@@ -95,7 +94,7 @@ driveView.setDriverActionNecessaryCallback { (isDriverActionNecessary, driverAct
 }
 ```
 
-For a complete list of callbacks see [public-apis.md](./public-apis.md)
+For a complete list of callbacks see [geotabdrivesdk](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/index.html)
 ## Custom Login
 
 The Mobile SDK allows integrators to use their own authentication and user management. All the SDK needs to log into Geotab Drive is a user's credentials.
