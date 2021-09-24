@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message GoDeviceData {
+    uint32 timestamp = 1;
+    int32 latitude = 2; // 1e-7 precision
+    int32 longitude = 3; // 1e-7 precision
+    int32 roadSpeed = 4;
+    int32 rpm = 5; // 0.25 precision
+    uint32 odometer = 6; // 0.1 precision unit km
+    uint32 statusFlag = 7;
+    uint32 tripOdometer = 8; // 0.1 precision unit km
+    uint32 totalEngineHours = 9; // 0.1 precision unit h
+    uint32 tripDuration = 10; // unit sec
+    uint32 goDeviceId = 11;
+    uint32 driverId = 12;
+}
