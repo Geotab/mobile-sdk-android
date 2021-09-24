@@ -1,7 +1,0 @@
-<resources>
-    <string name="app_name">GeotabDriveSDK</string>
-    <string name="bgNotificationText">Touchez pour ouvrir</string>
-    <string name="refresh">Rafraîchir</string>
-    <string name="errorMsg">Veuillez réessayer pour continuer.</string>
-    <string name="networkError">Pas de connexion au réseau</string>
-</resources>

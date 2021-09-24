@@ -1,7 +1,0 @@
-<resources>
-    <string name="app_name">GeotabDriveSDK</string>
-    <string name="bgNotificationText">タッチして開きます</string>
-    <string name="refresh">更新</string>
-    <string name="errorMsg">再度お試しください。</string>
-    <string name="networkError">ネットワークは接続されていません</string>
-</resources>

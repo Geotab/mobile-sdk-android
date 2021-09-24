@@ -1,9 +1,0 @@
-window.{{geotabModules}}.{{moduleName}}.appId = "{{appId}}";
-window.{{geotabModules}}.{{moduleName}}.appName = "{{appName}}";
-window.{{geotabModules}}.{{moduleName}}.version = "{{version}}";
-window.{{geotabModules}}.{{moduleName}}.platform = "{{devicePlatform}}";
-window.{{geotabModules}}.{{moduleName}}.manufacturer = "{{deviceManufacturer}}";
-window.{{geotabModules}}.{{moduleName}}.sdkVersion = "{{sdkVersion}}";
-window.{{geotabModules}}.{{moduleName}}.model = "{{deviceModel}}";
-window.{{geotabModules}}.{{moduleName}}.uuid = "{{deviceUuid}}";
-window.device = window.{{geotabModules}}.{{moduleName}};
