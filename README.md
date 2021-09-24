@@ -1,9 +1,8 @@
-# Getting Started 
+# Mobile SDK Android 
 
-## License
-GeotabDriveSDK is available under the MIT license. See the LICENSE file for more info. 
+## How to start  
 
-## Adding the Geotab Mobile SDK as a dependency  
+### Adding the Geotab Mobile SDK as a dependency  
 Geotab Mobile SDK can be added as gradle dependency, which is hosted in GitHub private repository. Users need to be added to the repository (https://github.com/Geotab/mobile-sdk-android) to access the library.
 Update build.gradle inside the app module with the Geotab Mobile SDK's Github repository path and credentials.
 
@@ -40,14 +39,14 @@ dependencies {
 ```
 Sync project with Gradle files to ensure the dependencies are resolved.
 
-## Initialization
+### Initialization
 
 The DriveFragment is the starting point of integrating mobile SDK. It's the container of the Geotab Drive Web app equipped with native APIs for accessing Geotab Drive web app's data
 ```kotlin
 val driveView = DriveFragment.newInstance()  
 ```
 
-## Present the DriveFragment
+### Present the DriveFragment
 
 ```kotlin
 supportFragmentManager
@@ -55,7 +54,7 @@ supportFragmentManager
     .add(R.id.main_layout, driveView)
     .commit()
 ```
-## Execute API call
+### Execute API call
 
 Most API calls require a user to be logged in to get a meaningful result.  You can listen for the `setPageNavigationCallback` to know when the user has successfully logged in.
 ```kotlin
@@ -87,7 +86,7 @@ driveView.getUserViolations { result ->
 
 For a complete list of APIs see [geotabdrivesdk](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/index.html)
 
-## Set a Callback listener
+### Set a Callback listener
 ```kotlin
 driveView.setDriverActionNecessaryCallback { (isDriverActionNecessary, driverActionType) ->
     Log.d(tag, "DriverActionNecessaryCallback: $isDriverActionNecessary, $driverActionType ")
@@ -95,7 +94,7 @@ driveView.setDriverActionNecessaryCallback { (isDriverActionNecessary, driverAct
 ```
 
 For a complete list of callbacks see [geotabdrivesdk](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/index.html)
-## Custom Login
+### Custom Login
 
 The Mobile SDK allows integrators to use their own authentication and user management. All the SDK needs to log into Geotab Drive is a user's credentials.
 
@@ -116,7 +115,7 @@ data class GeotabCredentials(
 ) : Serializable
 ``` 
 
-## Overwrite Default Background Service Notification Icon
+### Overwrite Default Background Service Notification Icon
 
 To use a custom icon for the background service notification, create a metadata object in your AndroidManifest.xml
 ```kotlin
@@ -125,7 +124,7 @@ To use a custom icon for the background service notification, create a metadata 
     android:resource="@drawable/your_icon" />
 ```
 
-## Overwrite Default Background color and icon
+### Overwrite Default Background color and icon
 
 To override default background color in network error page, create color resource with name="whitelabel_background_color" in color.xml
 ```kotlin
@@ -137,7 +136,7 @@ To override default text color in network error page, create color resource with
 ```
 To override default icon in network error page, add a drawable resource with name="whitelabel_banner_icon"
 
-## Permissions
+### Permissions
 
 To use the background location functionality, just add the permission in your AndroidManifest.xml
 
@@ -153,3 +152,6 @@ To use the activity motion tracking from the device, just add these two permissi
 <!-- Required for Android API 29+. -->
 <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 ```
+
+## License
+GeotabDriveSDK is available under the MIT license. See the LICENSE file for more info. 

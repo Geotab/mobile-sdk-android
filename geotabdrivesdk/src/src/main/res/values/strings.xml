@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">GeotabDriveSDK</string>
+    <string name="bgNotificationText">Touch to open</string>
+    <string name="refresh">Refresh</string>
+    <string name="errorMsg">Please try again to continue.</string>
+    <string name="networkError">No Network Connection</string>
+    <string name="download_error" tools:ignore="MissingTranslation">Download failed.</string>
+    <string name="downloading" tools:ignore="MissingTranslation">Downloading %1$s</string>
+    <string name="notification_channel_name" tools:ignore="MissingTranslation">Drive push notification</string>
+    <string name="notification_channel_description" tools:ignore="MissingTranslation">Push notifications sent to the driver</string>
+</resources>
