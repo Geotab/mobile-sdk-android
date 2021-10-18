@@ -1,9 +1,10 @@
-# Mobile SDK Android 
+[![GitHub license](https://img.shields.io/github/license/Geotab/mobile-sdk-android)](https://github.com/Geotab/mobile-sdk-android/blob/main/LICENSE) [![GitHub docs](https://img.shields.io/badge/docs-passing-brightgreen)](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/) ![GitHub kotlin](https://img.shields.io/badge/Kotlin-1.4.32-brightgreen) ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Geotab/mobile-sdk-android?label=release)
+# Mobile SDK Android     
 
 ## How to start  
 
 ### Adding the Geotab Mobile SDK as a dependency  
-Geotab Mobile SDK can be added as gradle dependency, which is hosted in GitHub private repository. Users need to be added to the repository (https://github.com/Geotab/mobile-sdk-android) to access the library.
+Geotab Mobile SDK can be added as gradle dependency, which is hosted in a GitHub repository. Use a valid GitHub user and token to access the library.
 Update build.gradle inside the app module with the Geotab Mobile SDK's Github repository path and credentials.
 
 ``` Groovy
