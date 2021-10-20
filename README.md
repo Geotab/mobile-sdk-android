@@ -1,4 +1,4 @@
-[![GitHub license](https://img.shields.io/github/license/Geotab/mobile-sdk-android)](https://github.com/Geotab/mobile-sdk-android/blob/main/LICENSE) [![GitHub docs](https://img.shields.io/badge/docs-passing-brightgreen)](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/) ![GitHub kotlin](https://img.shields.io/badge/Kotlin-1.4.32-brightgreen) ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Geotab/mobile-sdk-android?label=release)
+[![GitHub license](https://img.shields.io/github/license/Geotab/mobile-sdk-android)](https://github.com/Geotab/mobile-sdk-android/blob/main/LICENSE) [![GitHub docs](https://img.shields.io/badge/docs-passing-brightgreen)](https://geotab.github.io/mobile-sdk-android/geotabdrivesdk/) [![GitHub kotlin](https://img.shields.io/badge/Kotlin-1.4.32-brightgreen)](https://kotlinlang.org/) [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Geotab/mobile-sdk-android?label=release)](https://github.com/Geotab/mobile-sdk-android/packages/855733)
 # Mobile SDK Android     
 
 ## How to start  
