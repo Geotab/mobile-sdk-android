@@ -18,4 +18,9 @@ interface MyGeotabSdk {
      * Clears the previously set "last server address" callback
      */
     fun clearLastServerAddressUpdatedCallback()
+
+    /**
+     * Set custom url for the webview with the given path and last server address will be the host.
+     */
+    fun setCustomURLPath(path: String)
 }

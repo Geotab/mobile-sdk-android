@@ -93,6 +93,7 @@ class DriveFragment :
     ModuleContainerDelegate,
     NetworkErrorDelegate {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
+    // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
     private val push: (ModuleEvent) -> Unit = { moduleEvent ->
@@ -130,9 +131,8 @@ class DriveFragment :
         UserAgentUtil(requireContext())
     }
 
-    private val webView: WebView get() = binding.geotabDriveSdkWebview
-    // The following might show as an error in the IDE. It thinks errorLayout is a view, not a viewbinding
-    private val errorView: View get() = binding.errorLayout.root
+    private lateinit var webView: WebView
+    private lateinit var errorView: View
 
     private var isWebViewConfigured: Boolean = false
     private val contentController = WebViewClientUserContentController(this)
@@ -244,6 +244,9 @@ class DriveFragment :
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentGeotabDriveSdkBinding.inflate(inflater, container, false)
+        webView = binding.geotabDriveSdkWebview
+        // The following might show as an error in the IDE. It thinks errorLayout is a view, not a viewbinding
+        errorView = binding.errorLayout.root
         return binding.root
     }
 
@@ -348,8 +351,7 @@ class DriveFragment :
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
         val url = customUrl
         if (url != null) {
-            this.webView.loadUrl(url)
-            this.customUrl = null
+            setUrlToWebView(url)
         } else {
             val geotabDriveUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html"
             geotabCredentials?.let {
@@ -360,6 +362,7 @@ class DriveFragment :
         this.webView.addJavascriptInterface(this, Module.interfaceName)
         this.webView.webViewClient = webViewClientUserContentController
         isWebViewConfigured = true
+        this.webView.webChromeClient = WebViewChromeClient()
     }
 
     @JavascriptInterface
@@ -539,9 +542,13 @@ class DriveFragment :
         val urlString = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$path"
         this.customUrl = urlString
         if (isWebViewConfigured) {
-            this.webView.loadUrl(urlString)
-            this.customUrl = null
+            setUrlToWebView(urlString)
         }
+    }
+
+    private fun setUrlToWebView(urlString: String) {
+        this.webView.loadUrl(urlString)
+        this.customUrl = null
     }
 
     override fun setSession(credentialResult: CredentialResult, isCoDriver: Boolean) {

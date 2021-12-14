@@ -1,21 +1,16 @@
 package com.geotab.mobile.sdk
 
-import android.content.Context
 import android.os.Message
 import android.webkit.GeolocationPermissions
+import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import com.geotab.mobile.sdk.permission.Permission
-import com.geotab.mobile.sdk.permission.PermissionDelegate
 import com.geotab.mobile.sdk.permission.PermissionHelper
 
 class WebViewChromeClient(
-    private val context: Context,
-    private val permissionDelegate: PermissionDelegate
+    private val permissionHelper: PermissionHelper? = null
 ) : WebChromeClient() {
-    private val permissionHelper: PermissionHelper by lazy {
-        PermissionHelper(context, permissionDelegate)
-    }
 
     override fun onCreateWindow(
         view: WebView?,
@@ -33,18 +28,38 @@ class WebViewChromeClient(
         return true
     }
 
+    override fun onJsAlert(
+        view: WebView?,
+        url: String?,
+        message: String?,
+        result: JsResult?
+    ): Boolean {
+        return super.onJsAlert(view, url, message, result)
+    }
+
+    override fun onJsConfirm(
+        view: WebView?,
+        url: String?,
+        message: String?,
+        result: JsResult?
+    ): Boolean {
+        return super.onJsConfirm(view, url, message, result)
+    }
+
     override fun onGeolocationPermissionsShowPrompt(
         origin: String?,
         callback: GeolocationPermissions.Callback?
     ) {
         super.onGeolocationPermissionsShowPrompt(origin, callback)
 
-        permissionHelper.checkPermission(arrayOf(Permission.LOCATION)) { hasLocationPermission ->
-            callback?.invoke(
-                origin,
-                hasLocationPermission,
-                false
-            )
+        permissionHelper?.let {
+            it.checkPermission(arrayOf(Permission.LOCATION)) { hasLocationPermission ->
+                callback?.invoke(
+                    origin,
+                    hasLocationPermission,
+                    false
+                )
+            }
         }
     }
 }

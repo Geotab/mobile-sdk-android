@@ -28,6 +28,7 @@ import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.permission.PermissionAttribute
 import com.geotab.mobile.sdk.permission.PermissionDelegate
+import com.geotab.mobile.sdk.permission.PermissionHelper
 import com.geotab.mobile.sdk.permission.PermissionResultContract
 import com.geotab.mobile.sdk.publicInterfaces.MyGeotabSdk
 import com.geotab.mobile.sdk.util.UserAgentUtil
@@ -45,11 +46,14 @@ class MyGeotabFragment :
     PermissionDelegate,
     MyGeotabSdk {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
+    // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
     private val myGeotabUrl = "https://${MyGeotabConfig.serverAddress}"
     private val mustacheFactory by lazy { DefaultMustacheFactory() }
     private lateinit var preference: SharedPreferences
+    private var customUrl: String? = null
+    private var isWebViewConfigured: Boolean = false
 
     private val goBack = {
         if (webView.canGoBack()) {
@@ -65,10 +69,8 @@ class MyGeotabFragment :
         CookieManager.getInstance()
     }
 
-    private val webView: WebView get() = binding.geotabDriveSdkWebview
-
-    // The following might show as an error in the IDE. It thinks errorLayout is a view, not a viewbinding
-    private val errorView: View get() = binding.errorLayout.root
+    private lateinit var webView: WebView
+    private lateinit var errorView: View
 
     private val deviceModule: DeviceModule by lazy {
         DeviceModule(requireContext(), preference, userAgentUtil)
@@ -173,6 +175,9 @@ class MyGeotabFragment :
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentGeotabDriveSdkBinding.inflate(inflater, container, false)
+        webView = binding.geotabDriveSdkWebview
+        // The following might show as an error in the IDE. It thinks errorLayout is a view, not a viewbinding
+        errorView = binding.errorLayout.root
         return binding.root
     }
 
@@ -202,6 +207,14 @@ class MyGeotabFragment :
     override fun findModuleFunction(module: String, function: String): ModuleFunction? {
         val resModule = modules.firstOrNull { it.name == module }
         return resModule?.findFunction(function)
+    }
+
+    override fun setCustomURLPath(path: String) {
+        val urlString = "https://${MyGeotabConfig.serverAddress}#$path"
+        this.customUrl = urlString
+        if (isWebViewConfigured) {
+            setUrlToWebView(urlString)
+        }
     }
 
     @JavascriptInterface
@@ -306,18 +319,28 @@ class MyGeotabFragment :
     }
 
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
-        this.webView.loadUrl(myGeotabUrl)
+        customUrl?.let { url ->
+            setUrlToWebView(url)
+        } ?: run {
+            this.webView.loadUrl(myGeotabUrl)
+        }
+
         webViewClientUserContentController.addScriptOnPageFinished(moduleScripts)
         this.webView.addJavascriptInterface(this, Module.interfaceName)
         this.webView.webViewClient = webViewClientUserContentController
         val downloadFiles = context?.let { DownloadFiles(it, this) }
         this.webView.setDownloadListener(downloadFiles)
+        isWebViewConfigured = true
         this.webView.webChromeClient = context?.let {
             WebViewChromeClient(
-                context = it,
-                permissionDelegate = this
+                PermissionHelper(it, this)
             )
         }
+    }
+
+    private fun setUrlToWebView(url: String) {
+        this.webView.loadUrl(url)
+        this.customUrl = null
     }
 
     override fun onNetworkError() {
