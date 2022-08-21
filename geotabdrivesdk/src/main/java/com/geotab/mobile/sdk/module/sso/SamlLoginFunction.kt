@@ -38,7 +38,7 @@ class SamlLoginFunction(
 
             // Check if the Gson Transformer converts to null value.
             @Suppress("SENSELESS_COMPARISON")
-            if (arguments.samlLoginUrl == null) {
+            if (arguments.samlLoginUrl.isNullOrBlank()) {
                 jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
                 return@launch
             }

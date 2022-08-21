@@ -10,6 +10,8 @@ import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.camera.CameraModule.Companion.PERMISSION_DENIED
+import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.util.ImageUtil.Companion.MAX_HEIGHT
 import com.geotab.mobile.sdk.util.ImageUtil.Companion.MAX_WIDTH
 import com.geotab.mobile.sdk.util.JsonUtil
@@ -19,6 +21,7 @@ data class CaptureImageFunctionArgument(
     val size: Size? = null,
     val fileName: String? = null
 )
+
 class CaptureImageFunction(
     override val name: String = "captureImage",
     val context: Context,
@@ -45,7 +48,20 @@ class CaptureImageFunction(
                 return
             }
         }
-        val cameraLauncher = CameraLauncher(cameraDelegate, moduleContainerDelegate, arguments, context, jsCallback)
-        cameraLauncher.dispatchTakePictureIntent()
+
+        module.permissionHelper.checkPermission(arrayOf(Permission.CAMERA)) { isGranted ->
+            if (isGranted) {
+                val cameraLauncher = CameraLauncher(
+                    cameraDelegate,
+                    moduleContainerDelegate,
+                    arguments,
+                    context,
+                    jsCallback
+                )
+                cameraLauncher.dispatchTakePictureIntent()
+            } else {
+                jsCallback(Failure(Error(GeotabDriveError.CAPTURE_IMAGE_ERROR, PERMISSION_DENIED)))
+            }
+        }
     }
 }

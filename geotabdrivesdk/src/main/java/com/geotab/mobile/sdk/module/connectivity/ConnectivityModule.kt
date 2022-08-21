@@ -6,13 +6,16 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import com.geotab.mobile.sdk.models.ConnectivityState
 import com.geotab.mobile.sdk.models.ModuleEvent
+import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
+import com.geotab.mobile.sdk.module.Result
+import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.util.JsonUtil
 
 class ConnectivityModule(
     val context: Context,
     private val evaluate: (String, (String) -> Unit) -> Unit,
-    private val push: (ModuleEvent) -> Unit,
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
     override val name: String = "connectivity"
 ) : Module(name) {
     var started: Boolean = false
@@ -41,9 +44,9 @@ class ConnectivityModule(
         var scripts = super.scripts(context)
         val type = getNetworkType()
 
-        stateJson(type != ConnectivityType.NONE && type != ConnectivityType.UNKNOWN).let {
-            scripts += """window.$geotabModules.$name.state = $it"""
-        }
+        val connectivityJson =
+            stateJson(type != ConnectivityType.NONE && type != ConnectivityType.UNKNOWN)
+        scripts += """window.$geotabModules.$name.state = $connectivityJson"""
         return scripts
     }
 
@@ -69,21 +72,17 @@ class ConnectivityModule(
     }
 
     private fun updateState(online: Boolean) {
-        stateJson(online).let {
-            val script = """window.$geotabModules.$name.state = $it"""
-            evaluate(script) {}
-        }
+        val script = """window.$geotabModules.$name.state = ${stateJson(online)}"""
+        evaluate(script) {}
     }
 
     private fun signalConnectivityEvent(online: Boolean) {
-        stateJson(online).let {
-            push(
-                ModuleEvent(
-                    "connectivity",
-                    "{ detail: $it }"
-                )
+        push(
+            ModuleEvent(
+                "connectivity",
+                "{ detail: ${stateJson(online)} }"
             )
-        }
+        ) {}
     }
 
     private fun stateJson(online: Boolean): String {

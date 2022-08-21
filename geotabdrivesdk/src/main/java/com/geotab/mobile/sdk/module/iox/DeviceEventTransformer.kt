@@ -5,11 +5,19 @@ import com.geotab.mobile.sdk.models.DeviceEvent
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.util.toByteBuffer
 import java.lang.StringBuilder
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.experimental.and
 
 class DeviceEventTransformer {
 
     companion object {
+        private val DRIVE_DATE_FORMAT =
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+                .apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
         const val JAN_1_2002_TIMESTAMP = 1009843200
         const val MILLISECONDS = 1_000
         const val LOCATION_PRECISION = 10_000_000
@@ -22,7 +30,10 @@ class DeviceEventTransformer {
         if (byteArray.size < 40) {
             throw Error(GeotabDriveError.EVENT_PARSING_EXCEPTION)
         }
-        val timestamp = (byteArray.toByteBuffer(0, 4).int.toLong() + JAN_1_2002_TIMESTAMP) * MILLISECONDS
+        val dateTime =
+            DRIVE_DATE_FORMAT.format(
+                (byteArray.toByteBuffer(0, 4).int.toLong() + JAN_1_2002_TIMESTAMP) * MILLISECONDS
+            )
         val latitude = byteArray.toByteBuffer(4, 4).int.toFloat() / LOCATION_PRECISION
 
         val longitude = byteArray.toByteBuffer(8, 4).int.toFloat() / LOCATION_PRECISION
@@ -46,7 +57,7 @@ class DeviceEventTransformer {
         val driverId = byteArray.toByteBuffer(36, 4).int.toString()
 
         return DeviceEvent(
-            timestamp,
+            dateTime,
             latitude,
             longitude,
             roadSpeed,

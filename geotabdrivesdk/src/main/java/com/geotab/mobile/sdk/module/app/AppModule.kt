@@ -9,13 +9,16 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.LifecycleOwner
 import com.geotab.mobile.sdk.models.ModuleEvent
+import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
+import com.geotab.mobile.sdk.module.Result
+import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.app.ForeGroundService.ForegroundBinder
 typealias LastServerUpdatedCallbackType = (serverAddr: String) -> Unit
 
 class AppModule(
     private val evaluate: (String, (String) -> Unit) -> Unit,
-    private val push: (ModuleEvent) -> Unit,
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
     override val name: String = "app"
 ) : Module(name) {
     private lateinit var adapter: BackgroundModeAdapter
@@ -24,6 +27,7 @@ class AppModule(
     private var foreGroundService: ForeGroundService? = null
 
     var lastServerUpdatedCallback: LastServerUpdatedCallbackType = {}
+    var keepAlive = "{}"
 
     init {
         functions.add(UpdateLastServerFunction(module = this))
@@ -37,7 +41,7 @@ class AppModule(
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
-            push(ModuleEvent("app.background.keepalive", "{ detail:{error : 'service disconnected'}}"))
+            push(ModuleEvent("app.background.keepalive", "{ detail:{error : 'service disconnected'}}")) {}
         }
     }
 
@@ -63,6 +67,7 @@ class AppModule(
     override fun scripts(context: Context): String {
         var scripts = super.scripts(context)
         scripts += "window.$geotabModules.$name.background = $isBackground;"
+        scripts += "window.$geotabModules.$name.keepAlive = $keepAlive;"
         return scripts
     }
 
@@ -80,9 +85,9 @@ class AppModule(
             return
         }
         this.isBackground = backgroundMode.isBackground
-        val script = "if (window.$geotabModules != null) { window.$geotabModules.$name.background = $isBackground; }"
-        evaluate(script) {}
-        push(ModuleEvent("app.background", "undefined"))
+        keepAlive = "{}"
+        evaluateScript()
+        push(ModuleEvent("app.background", "{ detail: $isBackground }")) {}
 
         if (isBackground) startService() else stopService()
     }
@@ -94,7 +99,9 @@ class AppModule(
             isBound = context.bindService(intent, foreGroundconnection, BIND_AUTO_CREATE)
             context.startService(intent)
         } catch (e: Exception) {
-            push(ModuleEvent("app.background.keepalive", "{detail: {error: \'${e.message}\'}}"))
+            keepAlive = "{ error: \"${e.message}\" }"
+            evaluateScript()
+            push(ModuleEvent("app.background.keepalive", "{detail: {error: \'${e.message}\'}}")) {}
             stopService()
         }
     }
@@ -109,5 +116,19 @@ class AppModule(
         context.unbindService(foreGroundconnection)
         context.stopService(intent)
         isBound = false
+    }
+
+    /**
+     * Evaluate the scripts again to populate background and keepAlive variables
+     */
+    private fun evaluateScript() {
+        var script =
+            """
+                if (window.$geotabModules != null) { 
+                    window.$geotabModules.$name.background = $isBackground; 
+                    window.$geotabModules.$name.keepAlive = $keepAlive;
+                } 
+            """.trimMargin()
+        evaluate(script) {}
     }
 }

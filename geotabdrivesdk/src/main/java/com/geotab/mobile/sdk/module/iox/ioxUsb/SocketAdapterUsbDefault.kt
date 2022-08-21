@@ -193,6 +193,9 @@ class SocketAdapterUsbDefault internal constructor(
         if (state is State.WaitingForConnectivity) {
             return
         }
+        if (state is State.Open && exception.getErrorCode() == GeotabDriveError.SOCKET_ACCESSORY_DETACHED_EXCEPTION) {
+            listener?.onDisconnect()
+        }
         val previousState = state
         val listener = listener
         shutdown()

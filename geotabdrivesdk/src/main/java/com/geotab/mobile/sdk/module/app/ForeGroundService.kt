@@ -43,11 +43,6 @@ class ForeGroundService : Service() {
         return binder
     }
 
-    override fun onCreate() {
-        super.onCreate()
-        keepAwake()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         awakeRelease()
@@ -57,6 +52,7 @@ class ForeGroundService : Service() {
      * Prevent Android from stopping the background service automatically.
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        keepAwake()
         return START_STICKY
     }
 
@@ -113,7 +109,7 @@ class ForeGroundService : Service() {
             context,
             0,
             toLaunch,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         notificationBuilder.setContentIntent(resultPendingIntent)

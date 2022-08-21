@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
+import com.geotab.mobile.sdk.NotificationActivity
 import com.geotab.mobile.sdk.models.NativeNotifyAction
 import java.security.SecureRandom
 
@@ -52,12 +53,14 @@ class NotificationBuilderProvider(val context: Context) {
      * @return PendingIntent
      */
     fun getPendingIntentForAction(action: NativeNotifyAction, notificationId: Int): PendingIntent {
-        val actionIntent = Intent(context, ClickNotificationReceiver::class.java)
+        val actionIntent = Intent(context, NotificationActivity::class.java)
             .putExtra(LocalNotificationModule.NOTIFICATION_ID, notificationId)
             .putExtra(LocalNotificationModule.NOTIFICATION_ACTION_ID, action.id)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
         val random = SecureRandom()
         val reqCode = random.nextInt()
-        return PendingIntent.getBroadcast(context, reqCode, actionIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        return PendingIntent.getActivity(context, reqCode, actionIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
     /**
@@ -66,12 +69,14 @@ class NotificationBuilderProvider(val context: Context) {
      * @return PendingIntent
      */
     fun getPendingContentIntent(notificationId: Int): PendingIntent {
-        val contentIntent = Intent(context, ClickNotificationReceiver::class.java)
+        val contentIntent = Intent(context, NotificationActivity::class.java)
             .putExtra(LocalNotificationModule.NOTIFICATION_ID, notificationId)
             .putExtra(LocalNotificationModule.NOTIFICATION_ACTION_ID, LocalNotificationModule.CLICK_ACTION_ID)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
         val random = SecureRandom()
         val reqCode = random.nextInt()
-        return PendingIntent.getBroadcast(context, reqCode, contentIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        return PendingIntent.getActivity(context, reqCode, contentIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
     /**

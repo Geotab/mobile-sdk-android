@@ -450,4 +450,22 @@ declare namespace geotabModules {
          */
         function samlLogin(argument: { samlLoginUrl: string }, callback: (err?: Error, result?: string) => void);
     }
+
+    namespace appearance {
+        enum AppearanceType {
+            Unknown = 0,
+            Light,
+            Dark
+        }
+        /*******
+         * Readonly property, indicating the current appearance type of the device.
+         */
+        let appearanceType: AppearanceType;
+
+        /*******
+         * window event. Fires whenever the devices appearance type changes
+         * @param detail: { "appearanceType": AppearanceType }
+         */
+        // event: "geotab.appearance"
+    }
 }

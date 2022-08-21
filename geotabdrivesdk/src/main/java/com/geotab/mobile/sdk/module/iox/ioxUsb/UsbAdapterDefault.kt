@@ -82,7 +82,7 @@ class UsbAdapterDefault(private val context: Context) : UsbAdapter {
 
     override fun requestPermission(accessory: UsbAccessory, permissionCallback: (Boolean) -> Unit) {
         registerReceiver()
-        val intent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
+        val intent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE)
         permission = Permission(accessory, intent, permissionCallback)
         usbManager.requestPermission(accessory, intent)
     }

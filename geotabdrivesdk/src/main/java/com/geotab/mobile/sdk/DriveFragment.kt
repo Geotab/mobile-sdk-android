@@ -28,6 +28,7 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.app.AppModule
 import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
+import com.geotab.mobile.sdk.module.appearance.AppearanceModule
 import com.geotab.mobile.sdk.module.battery.BatteryModule
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.camera.CameraDelegate
@@ -67,6 +68,7 @@ import com.geotab.mobile.sdk.permission.PermissionDelegate
 import com.geotab.mobile.sdk.permission.PermissionResultContract
 import com.geotab.mobile.sdk.publicInterfaces.DriveSdk
 import com.geotab.mobile.sdk.publicInterfaces.SpeechEngine
+import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.github.mustachejava.DefaultMustacheFactory
 import kotlinx.coroutines.Dispatchers
@@ -96,27 +98,38 @@ class DriveFragment :
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
-    private val push: (ModuleEvent) -> Unit = { moduleEvent ->
-        val script = """
-            window.dispatchEvent(new CustomEvent("${moduleEvent.event}", ${moduleEvent.params}));
-        """
+    private val pushScriptUtil: PushScriptUtil by lazy {
+        PushScriptUtil()
+    }
 
-        this.webView.post {
-            this.webView.evaluateJavascript(script) {}
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit = { moduleEvent, callBack ->
+        val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
+
+        if (validEvent) {
+            val script = """
+    window.dispatchEvent(new CustomEvent("${moduleEvent.event}", ${moduleEvent.params}));
+"""
+
+            this.webView?.post {
+                this.webView?.evaluateJavascript(script) {}
+            }
+
+            callBack(Success(""))
         }
     }
 
-    private val evaluate: (String, (String) -> Unit) -> Unit = { script: String, callback: (String) -> Unit ->
-        this.webView.post {
-            this.webView.evaluateJavascript(script) {
-                callback(it)
+    private val evaluate: (String, (String) -> Unit) -> Unit =
+        { script: String, callback: (String) -> Unit ->
+            this.webView?.post {
+                this.webView?.evaluateJavascript(script) {
+                    callback(it)
+                }
             }
         }
-    }
 
     private val goBack = {
-        if (webView.canGoBack()) {
-            webView.goBack()
+        if (webView?.canGoBack() == true) {
+            webView?.goBack()
         }
     }
 
@@ -131,7 +144,7 @@ class DriveFragment :
         UserAgentUtil(requireContext())
     }
 
-    private lateinit var webView: WebView
+    private var webView: WebView? = null
     private lateinit var errorView: View
 
     private var isWebViewConfigured: Boolean = false
@@ -155,7 +168,12 @@ class DriveFragment :
         SpeechModule(requireContext())
     }
     private val geolocationModule: GeolocationModule by lazy {
-        GeolocationModule(requireContext(), permissionDelegate = this, evaluate = evaluate, push = push)
+        GeolocationModule(
+            requireContext(),
+            permissionDelegate = this,
+            evaluate = evaluate,
+            push = push
+        )
     }
 
     private val appModule: AppModule by lazy {
@@ -168,6 +186,10 @@ class DriveFragment :
         BatteryModule(requireContext(), push = push)
     }
 
+    private val appearanceModule: AppearanceModule by lazy {
+        AppearanceModule(requireContext())
+    }
+
     private val motionActivityModule: MotionActivityModule by lazy {
         MotionActivityModule(requireContext(), permissionDelegate = this, push = push)
     }
@@ -176,7 +198,7 @@ class DriveFragment :
         IoxUsbModule(requireContext(), push = push)
     }
     private val ioxbleModule: IoxBleModule by lazy {
-        IoxBleModule(requireContext(), push = push)
+        IoxBleModule(requireContext(), permissionDelegate = this, push = push)
     }
 
     private val modulesInternal: ArrayList<Module?> by lazy {
@@ -190,11 +212,12 @@ class DriveFragment :
             activity?.let { WebViewModule(it, goBack) },
             context?.let { LocalNotificationModule(it) },
             batteryModule,
+            appearanceModule,
             motionActivityModule,
             appModule,
             context?.let { ConnectivityModule(it, evaluate, push) },
             context?.let { FileSystemModule(it) },
-            context?.let { CameraModule(it, this, this) },
+            context?.let { CameraModule(it, this, this, this) },
             context?.let { PhotoLibraryModule(it, this, this) },
             ioxUsbModule,
             geolocationModule,
@@ -254,10 +277,13 @@ class DriveFragment :
         super.onViewCreated(view, savedInstanceState)
         // The following might show as an error in the IDE. It thinks errorLayout is a view, not a viewbinding
         binding.errorLayout.refreshButton.setOnClickListener {
-            if (webView.url != null) {
-                webView.reload()
+            webView?.let { webView ->
+                if (webView.url != null) {
+                    webView.reload()
+                }
+                webView.visibility = View.VISIBLE
             }
-            webView.visibility = View.VISIBLE
+
             errorView.visibility = View.GONE
         }
 
@@ -287,11 +313,16 @@ class DriveFragment :
 
     override fun onDestroy() {
         super.onDestroy()
-        if (webView.parent != null) {
-            (webView.parent as ViewGroup).removeView(webView)
-            webView.removeAllViews()
+        webView?.let { webView ->
+            if (webView.parent != null) {
+                (webView.parent as ViewGroup).removeView(webView)
+                webView.removeAllViews()
+            }
+            webView.destroy()
         }
-        webView.destroy()
+
+        webView = null
+
         ioxUsbModule.stop()
     }
 
@@ -332,20 +363,26 @@ class DriveFragment :
             WebView.setWebContentsDebuggingEnabled(true)
         }
 
-        with(this.webView.settings) {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            setAppCacheEnabled(true)
-            cacheMode = WebSettings.LOAD_DEFAULT
-            setAppCachePath(webView.context.cacheDir.path)
-            setSupportMultipleWindows(true)
-            userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
-            setGeolocationEnabled(true)
+        webView?.let { webView ->
+            with(webView.settings) {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                setAppCacheEnabled(true)
+                cacheMode = WebSettings.LOAD_DEFAULT
+                setAppCachePath(webView.context.cacheDir.path)
+                setSupportMultipleWindows(true)
+                mediaPlaybackRequiresUserGesture = false
+                userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
+                setGeolocationEnabled(true)
+            }
+
+            cookieManager.setAcceptThirdPartyCookies(
+                webView,
+                DriveSdkConfig.allowThirdPartyCookies
+            )
+
+            webView.loadUrl("javascript:document.open();document.close();")
         }
-
-        cookieManager.setAcceptThirdPartyCookies(this.webView, DriveSdkConfig.allowThirdPartyCookies)
-
-        webView.loadUrl("javascript:document.open();document.close();")
     }
 
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
@@ -355,14 +392,14 @@ class DriveFragment :
         } else {
             val geotabDriveUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html"
             geotabCredentials?.let {
-                this.webView.loadUrl("$geotabDriveUrl#ui/login,(server:'${it.path}',credentials:(database:'${(it.credentials.database)}',sessionId:'${(it.credentials.sessionId)}',userName:'${(it.credentials.userName)}'))")
-            } ?: run { this.webView.loadUrl(geotabDriveUrl) }
+                this.webView?.loadUrl("$geotabDriveUrl#ui/login,(server:'${it.path}',credentials:(database:'${(it.credentials.database)}',sessionId:'${(it.credentials.sessionId)}',userName:'${(it.credentials.userName)}'))")
+            } ?: run { this.webView?.loadUrl(geotabDriveUrl) }
         }
         webViewClientUserContentController.addScriptOnPageFinished(moduleScripts)
-        this.webView.addJavascriptInterface(this, Module.interfaceName)
-        this.webView.webViewClient = webViewClientUserContentController
+        this.webView?.addJavascriptInterface(this, Module.interfaceName)
+        this.webView?.webViewClient = webViewClientUserContentController
         isWebViewConfigured = true
-        this.webView.webChromeClient = WebViewChromeClient()
+        this.webView?.webChromeClient = WebViewChromeClient()
     }
 
     @JavascriptInterface
@@ -404,7 +441,7 @@ class DriveFragment :
 
     override fun onNetworkError() {
         errorView.let {
-            webView.visibility = View.GONE
+            webView?.visibility = View.GONE
             it.visibility = View.VISIBLE
         }
         webAppLoadFailed?.invoke()
@@ -418,8 +455,8 @@ class DriveFragment :
         moduleFunction.handleJavascriptCall(params) { result ->
             when (result) {
                 is Success -> {
-                    this.webView.post {
-                        this.webView.evaluateJavascript(
+                    this.webView?.post {
+                        this.webView?.evaluateJavascript(
                             """
                             try {
                                 var t = $callback(null, ${result.value});
@@ -434,8 +471,8 @@ class DriveFragment :
                     }
                 }
                 is Failure -> {
-                    this.webView.post {
-                        this.webView.evaluateJavascript(
+                    this.webView?.post {
+                        this.webView?.evaluateJavascript(
                             """
                             try {
                                 var t = $callback(new Error(`${result.reason.getErrorCode()}: ${result.reason.getErrorMessage()}`));
@@ -459,21 +496,30 @@ class DriveFragment :
         }
     }
 
-    override fun getUserViolations(userName: String, callback: (Result<Success<String>, Failure>) -> Unit) {
+    override fun getUserViolations(
+        userName: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
         (findModuleFunction("user", "getViolations") as? GetViolationsFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }
     }
 
-    override fun getAvailability(userName: String, callback: (Result<Success<String>, Failure>) -> Unit) {
+    override fun getAvailability(
+        userName: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
         (findModuleFunction("user", "getAvailability") as? GetAvailabilityFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }
     }
 
-    override fun setDriverSeat(driverId: String, callback: (Result<Success<String>, Failure>) -> Unit) {
+    override fun setDriverSeat(
+        driverId: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
         val moduleFunction = findModuleFunction("user", "setDriverSeat") as? SetDriverSeatFunction
         moduleFunction?.let {
             it.driverId = driverId
@@ -481,7 +527,10 @@ class DriveFragment :
         }
     }
 
-    override fun getHosRuleSet(userName: String, callback: (Result<Success<String>, Failure>) -> Unit) {
+    override fun getHosRuleSet(
+        userName: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
         (findModuleFunction("user", "getHosRuleSet") as? GetHosRuleSetFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
@@ -546,8 +595,13 @@ class DriveFragment :
         }
     }
 
+    override fun getDeviceEvents(callback: (Result<Success<String>, Failure>) -> Unit) {
+        ioxbleModule.deviceEventCallback = callback
+        ioxUsbModule.deviceEventCallback = callback
+    }
+
     private fun setUrlToWebView(urlString: String) {
-        this.webView.loadUrl(urlString)
+        this.webView?.loadUrl(urlString)
         this.customUrl = null
     }
 
@@ -560,27 +614,29 @@ class DriveFragment :
         val geotabDriveUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html"
 
         if (isCoDriver) {
-            this.webView.loadUrl("$geotabDriveUrl#ui/login,(addCoDriver:!t,server:'${credentialResult.path}',credentials:(database:'${credentialResult.credentials.database}',sessionId:'${credentialResult.credentials.sessionId}',userName:'${credentialResult.credentials.userName}'))")
+            this.webView?.loadUrl("$geotabDriveUrl#ui/login,(addCoDriver:!t,server:'${credentialResult.path}',credentials:(database:'${credentialResult.credentials.database}',sessionId:'${credentialResult.credentials.sessionId}',userName:'${credentialResult.credentials.userName}'))")
         } else {
-            this.webView.loadUrl("$geotabDriveUrl#ui/login,(server:'${credentialResult.path}',credentials:(database:'${credentialResult.credentials.database}',sessionId:'${credentialResult.credentials.sessionId}',userName:'${credentialResult.credentials.userName}'))")
+            this.webView?.loadUrl("$geotabDriveUrl#ui/login,(server:'${credentialResult.path}',credentials:(database:'${credentialResult.credentials.database}',sessionId:'${credentialResult.credentials.sessionId}',userName:'${credentialResult.credentials.userName}'))")
         }
     }
 
     override fun cancelLogin() {
-        val list = webView.copyBackForwardList()
-        list.currentItem?.url?.takeIf { url ->
-            val currentHash = url.substring(url.indexOf('#') + 1)
-            currentHash.contains("login", ignoreCase = true)
-        }?.let {
-            for (i in list.size - 1 downTo 0) {
-                val url = list.getItemAtIndex(i).url
-                val indx = url.indexOf('#')
-                if (indx != -1 && !url.substring(indx + 1).contains("login", ignoreCase = true)) {
-                    webView.goBackOrForward(i - (list.size - 1))
-                    return
+        webView?.let { webView ->
+            val list = webView.copyBackForwardList()
+            list.currentItem?.url?.takeIf { url ->
+                val currentHash = url.substring(url.indexOf('#') + 1)
+                currentHash.contains("login", ignoreCase = true)
+            }?.let {
+                for (i in list.size - 1 downTo 0) {
+                    val url = list.getItemAtIndex(i).url
+                    val indx = url.indexOf('#')
+                    if (indx != -1 && !url.substring(indx + 1).contains("login", ignoreCase = true)) {
+                        webView.goBackOrForward(i - (list.size - 1))
+                        return
+                    }
                 }
-            }
-        } ?: return
+            } ?: return
+        }
     }
 
     /**

@@ -1,0 +1,19 @@
+<HTML>
+<HEAD>
+<meta charset="UTF-8">
+<title>DriveSdk.getDeviceEvents - geotabdrivesdk</title>
+<link rel="stylesheet" href="../../../style.css">
+</HEAD>
+<BODY>
+<a href="../../index.html">geotabdrivesdk</a>&nbsp;/&nbsp;<a href="../index.html">com.geotab.mobile.sdk.publicInterfaces</a>&nbsp;/&nbsp;<a href="index.html">DriveSdk</a>&nbsp;/&nbsp;<a href="./get-device-events.html">getDeviceEvents</a><br/>
+<br/>
+<h1>getDeviceEvents</h1>
+<a name="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getDeviceEvents(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.String)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))"></a>
+<code><span class="keyword">abstract</span> <span class="keyword">fun </span><span class="identifier">getDeviceEvents</span><span class="symbol">(</span><span class="identifier" id="com.geotab.mobile.sdk.publicInterfaces.DriveSdk$getDeviceEvents(kotlin.Function1((com.geotab.mobile.sdk.module.Result((com.geotab.mobile.sdk.module.Success((kotlin.String)), com.geotab.mobile.sdk.module.Failure)), kotlin.Unit)))/callback">callback</span><span class="symbol">:</span>&nbsp;<span class="symbol">(</span><span class="identifier">Result</span><span class="symbol">&lt;</span><span class="identifier">Success</span><span class="symbol">&lt;</span><span class="identifier">String</span><span class="symbol">&gt;</span><span class="symbol">,</span>&nbsp;<span class="identifier">Failure</span><span class="symbol">&gt;</span><span class="symbol">)</span>&nbsp;<span class="symbol">-&gt;</span>&nbsp;<span class="identifier">Unit</span><span class="symbol">)</span><span class="symbol">: </span><span class="identifier">Unit</span></code>
+<p>Get device events from IOXBLE and IOXUSB as Json string in the callback.
+Callback returns Json string {Type:Int and DeviceEvent : Json String}</p>
+<ul><li>Type being the type of IOX, 0 for USB and 1 for BLE</li>
+<li>DeviceEvent is the Json string of the device event object.</li>
+</ul>
+</BODY>
+</HTML>

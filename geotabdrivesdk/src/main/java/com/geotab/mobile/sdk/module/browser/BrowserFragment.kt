@@ -30,6 +30,7 @@ import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.util.JsonUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
+import java.net.MalformedURLException
 import java.net.URL
 
 class BrowserFragment : Fragment() {
@@ -154,7 +155,9 @@ class BrowserFragment : Fragment() {
                 request: WebResourceRequest?,
                 error: WebResourceError?
             ) {
-                onErrorAndClose(error?.description.toString())
+                if (error?.errorCode == ERROR_HOST_LOOKUP && request?.isForMainFrame == true) {
+                    onErrorAndClose(error.description.toString())
+                }
                 super.onReceivedError(view, request, error)
             }
         }
@@ -180,8 +183,12 @@ class BrowserFragment : Fragment() {
 
     private fun setupToolBar() {
         val toolBar = browserBinding.toolBar
-        url?.let {
-            toolBar.title = URL(it).host
+        url?.let { urlString ->
+            toolBar.title = try {
+                URL(urlString).host
+            } catch (e: MalformedURLException) {
+                urlString
+            }
         }
         toolBar.navigationIcon = context?.let {
             ContextCompat.getDrawable(it, R.drawable.ic_baseline_close_24)

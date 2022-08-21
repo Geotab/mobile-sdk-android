@@ -24,6 +24,7 @@ class GetViolationsFunction(
         jsonString: String?,
         jsCallback: (Result<Success<String>, Failure>) -> Unit
     ) {
+        println("response for violation:" + jsonString)
         val response = this.transformOrInvalidate(jsonString, jsCallback) ?: return
         val sdkCallback = this.getSdkCallbackOrInvalidate(response, jsCallback) ?: return
 

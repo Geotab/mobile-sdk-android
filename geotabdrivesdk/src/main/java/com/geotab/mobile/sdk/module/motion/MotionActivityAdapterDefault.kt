@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import com.geotab.mobile.sdk.models.enums.MotionEnum
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
@@ -34,8 +35,12 @@ class MotionActivityAdapterDefault(private val context: Context) : MotionActivit
 
         val intent = Intent(adapterRegistrationName)
         val request = ActivityTransitionRequest(transitions)
+        var flags = 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            flags = PendingIntent.FLAG_MUTABLE
+        }
 
-        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0)
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, flags)
 
         val task = ActivityRecognition.getClient(context)
             .requestActivityTransitionUpdates(request, pendingIntent)
@@ -64,7 +69,7 @@ class MotionActivityAdapterDefault(private val context: Context) : MotionActivit
 
     override fun onReceive(context: Context?, intent: Intent?) {
         if (ActivityTransitionResult.hasResult(intent)) {
-            val result = ActivityTransitionResult.extractResult(intent)
+            val result = intent?.let { ActivityTransitionResult.extractResult(it) }
             result?.let {
                 for (event in it.transitionEvents) {
                     val activity = activityType(event.activityType)

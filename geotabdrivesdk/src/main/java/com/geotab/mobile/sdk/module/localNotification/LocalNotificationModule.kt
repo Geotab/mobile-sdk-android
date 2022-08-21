@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_DEFAULT
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import com.geotab.mobile.sdk.Error
@@ -27,12 +26,13 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
         var actionHandler: ((Result<Success<String>, Failure>) -> Unit)? = null
         var actionIdentifier = emptyArray<String>()
 
-        const val CHANNEL_ID: String = "default-channel-id"
-        const val CHANNEL_NAME: String = "Default channel"
-        const val NOTIFICATION_ID: String = "NOTIFICATION_ID"
-        const val NOTIFICATION_ACTION_ID: String = "NOTIFICATION_ACTION_ID"
-        const val CLICK_ACTION_ID: String = "click"
-        const val CANCEL_NOTIFICATION_ID: String = "cancel"
+        const val CHANNEL_ID = "default-channel-id"
+        const val CHANNEL_NAME = "Default channel"
+        const val NOTIFICATION_ID = "NOTIFICATION_ID"
+        const val NOTIFICATION_ID_DEFAULT_VALUE = 0
+        const val NOTIFICATION_ACTION_ID = "NOTIFICATION_ACTION_ID"
+        const val CLICK_ACTION_ID = "click"
+        const val CANCEL_NOTIFICATION_ID = "cancel"
         const val NOTIFICATION_TEXT_NULL = "Notification text cannot be null"
         const val NOTIFICATION_TEXT_EMPTY = "Notification text cannot be empty"
         const val NOTIFICATION_ID_NULL = "Notification ID cannot be null"
@@ -99,7 +99,12 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
          * @param notificationId Local notification id
          * @param context Application context
          */
-        fun fireEvent(action: String, notificationId: Int, context: Context) {
+        fun fireEvent(
+            action: String,
+            notificationId: Int,
+            context: Context,
+            isRootTask: Boolean = false
+        ) {
             val prefsNotificationRepository = PreferenceNotificationRepository(
                 context,
                 NOTIFICATION_ID
@@ -107,7 +112,7 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
             prefsNotificationRepository.getNotification(
                 notificationId
             )?.let {
-                launchApp(context)
+                launchApp(context, isRootTask)
                 fireJSAction(action, it)
                 prefsNotificationRepository.unPersist(notificationId.toString())
                 getNotificationManager(context).cancel(notificationId)
@@ -117,28 +122,17 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
         /**
          * Launch main intent from package.
          */
-        private fun launchApp(context: Context) {
-            // Need to send a broadcast to close the notification drawer.
-            val it = Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
-            context.sendBroadcast(it)
-            // Now launch the app.
-            val activityManager =
-                context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        private fun launchApp(context: Context, isRootTask: Boolean) {
+            if (!isRootTask) {
+                // Now launch the app.
+                val activityManager =
+                    context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-            if (activityManager.appTasks.size > 0) {
                 // if the current application is active, bring it to foreground
                 activityManager.appTasks[0].moveToFront()
             } else {
-                // If current application is not active, launch the app
-                val launchIntent = Intent(Intent.ACTION_MAIN)
-                launchIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-
-                val targetIntent = context
-                    .packageManager
-                    .getLaunchIntentForPackage(context.packageName)
-                    ?.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-                context.startActivity(targetIntent)
+                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                context.startActivity(launchIntent)
             }
         }
 

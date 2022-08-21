@@ -1,7 +1,7 @@
 package com.geotab.mobile.sdk.models
 
 /**
- * @property timestamp Time of event in milliseconds since the Unix epoch
+ * @property dateTime Time of event in milliseconds since the Unix epoch
  * @property latitude Latitude in degrees
  * @property longitude Longitude in degrees
  * @property roadSpeed Speed of vehicle in km/h
@@ -15,7 +15,7 @@ package com.geotab.mobile.sdk.models
  * @property driverId Identifier for driver
  */
 data class DeviceEvent(
-    val timestamp: Long,
+    val dateTime: String,
     val latitude: Float,
     val longitude: Float,
     val roadSpeed: Float,
@@ -35,7 +35,7 @@ data class DeviceEvent(
 
         other as DeviceEvent
 
-        if (timestamp != other.timestamp) return false
+        if (dateTime != other.dateTime) return false
         if (latitude != other.latitude) return false
         if (longitude != other.longitude) return false
         if (roadSpeed != other.roadSpeed) return false
@@ -53,7 +53,7 @@ data class DeviceEvent(
     }
 
     override fun hashCode(): Int {
-        var result = timestamp.hashCode()
+        var result = dateTime.hashCode()
         result = 31 * result + latitude.hashCode()
         result = 31 * result + longitude.hashCode()
         result = 31 * result + roadSpeed.hashCode()

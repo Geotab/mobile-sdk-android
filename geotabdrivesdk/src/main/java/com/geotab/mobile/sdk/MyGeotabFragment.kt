@@ -1,29 +1,39 @@
 package com.geotab.mobile.sdk
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.print.PrintAttributes
 import android.print.PrintManager
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
+import com.geotab.mobile.sdk.fileChooser.FileChooserDelegate
+import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
+import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
 import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
+import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
-import com.geotab.mobile.sdk.module.app.AppModule
-import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
+import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.permission.PermissionAttribute
@@ -31,6 +41,7 @@ import com.geotab.mobile.sdk.permission.PermissionDelegate
 import com.geotab.mobile.sdk.permission.PermissionHelper
 import com.geotab.mobile.sdk.permission.PermissionResultContract
 import com.geotab.mobile.sdk.publicInterfaces.MyGeotabSdk
+import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.github.mustachejava.DefaultMustacheFactory
 import org.json.JSONObject
@@ -38,12 +49,14 @@ import org.json.JSONObject
 // fragment initialization parameters
 private const val ARG_MODULES = "modules"
 private const val MODULE_PREF = "MODULE_PREF"
+private const val ANY_FILE = "*/*"
 
 class MyGeotabFragment :
     Fragment(),
     ModuleContainerDelegate,
     NetworkErrorDelegate,
     PermissionDelegate,
+    FileChooserDelegate,
     MyGeotabSdk {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
     // This property is only valid between onCreateView and onDestroyView.
@@ -52,8 +65,27 @@ class MyGeotabFragment :
     private val myGeotabUrl = "https://${MyGeotabConfig.serverAddress}"
     private val mustacheFactory by lazy { DefaultMustacheFactory() }
     private lateinit var preference: SharedPreferences
-    private var customUrl: String? = null
-    private var isWebViewConfigured: Boolean = false
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private var fileChooserParams: WebChromeClient.FileChooserParams? = null
+
+    private val pushScriptUtil: PushScriptUtil by lazy {
+        PushScriptUtil()
+    }
+
+    val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit = { moduleEvent, callBack ->
+        val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
+
+        if (validEvent) {
+            val script = """
+            window.dispatchEvent(new CustomEvent("${moduleEvent.event}", ${moduleEvent.params}));
+        """
+            this.webView.post {
+                this.webView.evaluateJavascript(script) {}
+            }
+
+            callBack(Success(""))
+        }
+    }
 
     private val goBack = {
         if (webView.canGoBack()) {
@@ -76,16 +108,12 @@ class MyGeotabFragment :
         DeviceModule(requireContext(), preference, userAgentUtil)
     }
 
-    private val appModule: AppModule by lazy {
-        AppModule(evaluate = { _, _ -> }, push = {})
-    }
-
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
             deviceModule,
-            appModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
-            activity?.let { WebViewModule(it, goBack) }
+            activity?.let { WebViewModule(it, goBack) },
+            context?.let { SSOModule(this.parentFragmentManager) }
         )
     }
 
@@ -94,6 +122,8 @@ class MyGeotabFragment :
 
     @Keep
     companion object {
+        private const val TAG = "MyGeotabFragment"
+
         /**
          * Use this factory method to create a new instance of
          * this fragment using the provided parameters.
@@ -145,6 +175,25 @@ class MyGeotabFragment :
         it.callback(it.result)
     }
 
+    private val startFileChoose =
+        registerForActivityResult(object : ActivityResultContracts.GetMultipleContents() {
+            override fun createIntent(context: Context, input: String): Intent {
+                val intent = super.createIntent(context, input)
+                if (fileChooserParams?.acceptTypes?.size?.let { it > 1 } == true) {
+                    intent.type = ANY_FILE
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, fileChooserParams?.acceptTypes)
+                } else {
+                    intent.type = when (val fileType = fileChooserParams?.acceptTypes?.first() ?: ANY_FILE) {
+                        "" -> ANY_FILE
+                        else -> fileType
+                    }
+                }
+                return intent
+            }
+        }) {
+        filePathCallback?.onReceiveValue(it.toTypedArray())
+    }
+
     override fun askPermissionsResult(permissions: Array<Permission>, callback: (Boolean) -> Unit) {
         startForPermissionResult.launch(
             PermissionAttribute(
@@ -154,6 +203,21 @@ class MyGeotabFragment :
                 callback = callback
             )
         )
+    }
+
+    override fun uploadFileResult(
+        filePathCallback: ValueCallback<Array<Uri>>?,
+        fileChooserParams: WebChromeClient.FileChooserParams?
+    ) {
+        this.filePathCallback = filePathCallback
+        this.fileChooserParams = fileChooserParams
+        try {
+            startFileChoose.launch(
+                ""
+            )
+        } catch (exception: ActivityNotFoundException) {
+            Log.e(TAG, exception.message, exception)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -192,10 +256,6 @@ class MyGeotabFragment :
             errorView.visibility = View.GONE
         }
 
-        with(appModule) {
-            initValues(this@MyGeotabFragment.requireContext())
-        }
-
         configureWebView()
         configureWebViewScript(contentController)
     }
@@ -209,14 +269,6 @@ class MyGeotabFragment :
         return resModule?.findFunction(function)
     }
 
-    override fun setCustomURLPath(path: String) {
-        val urlString = "https://${MyGeotabConfig.serverAddress}#$path"
-        this.customUrl = urlString
-        if (isWebViewConfigured) {
-            setUrlToWebView(urlString)
-        }
-    }
-
     @JavascriptInterface
     fun postMessage(name: String, function: String, result: String, callback: String) {
         val jsonObject = JSONObject(result)
@@ -226,6 +278,7 @@ class MyGeotabFragment :
         moduleFunction?.let { callModuleFunction(it, callback, params) }
     }
 
+    @Suppress("unused")
     @JavascriptInterface
     fun createWebPrintJob() {
         val printManager = activity?.getSystemService(Context.PRINT_SERVICE) as? PrintManager
@@ -311,6 +364,7 @@ class MyGeotabFragment :
             setAppCacheEnabled(true)
             cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
             setAppCachePath(webView.context.cacheDir.path)
+            mediaPlaybackRequiresUserGesture = false
             setSupportMultipleWindows(true)
             userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
         }
@@ -319,28 +373,18 @@ class MyGeotabFragment :
     }
 
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
-        customUrl?.let { url ->
-            setUrlToWebView(url)
-        } ?: run {
-            this.webView.loadUrl(myGeotabUrl)
-        }
-
+        this.webView.loadUrl(myGeotabUrl)
         webViewClientUserContentController.addScriptOnPageFinished(moduleScripts)
         this.webView.addJavascriptInterface(this, Module.interfaceName)
         this.webView.webViewClient = webViewClientUserContentController
         val downloadFiles = context?.let { DownloadFiles(it, this) }
         this.webView.setDownloadListener(downloadFiles)
-        isWebViewConfigured = true
         this.webView.webChromeClient = context?.let {
             WebViewChromeClient(
-                PermissionHelper(it, this)
+                PermissionHelper(it, this),
+                FileChooserHelper(this)
             )
         }
-    }
-
-    private fun setUrlToWebView(url: String) {
-        this.webView.loadUrl(url)
-        this.customUrl = null
     }
 
     override fun onNetworkError() {
@@ -365,20 +409,5 @@ class MyGeotabFragment :
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    /**
-     * Set a callback to listen for "last server address" change event.
-     * LastServerUpdatedCallbackType is a function with the new last server address as the argument.
-     */
-    override fun setLastServerAddressUpdatedCallback(callback: LastServerUpdatedCallbackType) {
-        appModule.lastServerUpdatedCallback = callback
-    }
-
-    /**
-     * Clears the previously set LastServerAddressUpdated Callback
-     */
-    override fun clearLastServerAddressUpdatedCallback() {
-        appModule.lastServerUpdatedCallback = {}
     }
 }

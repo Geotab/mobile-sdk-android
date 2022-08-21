@@ -7,7 +7,6 @@ import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
-import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.util.JsonUtil
 import java.lang.Exception
 
@@ -38,7 +37,9 @@ class StartLocationServiceFunction(val context: Context, override val name: Stri
             return
         }
 
-        if (module.permissionHelper.hasPermission(arrayOf(Permission.LOCATION))) {
+        val permissions = module.permissionHelper.getLocationPermissionsBasedOnAndroidApi()
+
+        if (module.permissionHelper.hasPermission(permissions)) {
             try {
                 module.startService(argument?.enableHighAccuracy ?: false)
                 jsCallback(Success("undefined"))

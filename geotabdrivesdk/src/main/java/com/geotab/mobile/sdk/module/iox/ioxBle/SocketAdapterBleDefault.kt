@@ -1,6 +1,7 @@
 package com.geotab.mobile.sdk.module.iox.ioxBle
 
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
@@ -9,6 +10,7 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseSettings
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
@@ -16,12 +18,29 @@ import com.geotab.mobile.sdk.module.iox.ACK
 import com.geotab.mobile.sdk.module.iox.HANDSHAKE
 import com.geotab.mobile.sdk.module.iox.SocketAdapter
 import com.geotab.mobile.sdk.module.iox.isGoDeviceData
+import com.geotab.mobile.sdk.permission.Permission
+import com.geotab.mobile.sdk.permission.PermissionHelper
 import java.util.UUID
 
-class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAdapter) :
+class SocketAdapterBleDefault internal constructor(
+    private val bleAdapter: BleAdapter,
+    private val permissionHelper: PermissionHelper
+) :
     SocketAdapter() {
 
-    constructor(context: Context) : this(BleAdapterDefault(context))
+    constructor(context: Context, permissionHelper: PermissionHelper) : this(
+        BleAdapterDefault(
+            context
+        ),
+        permissionHelper
+    ) {
+        val descriptorID = UUID.fromString(NOTIFICATION_DESCRIPTOR_ID)
+        val descriptor = BluetoothGattDescriptor(
+            descriptorID,
+            BluetoothGattDescriptor.PERMISSION_WRITE or BluetoothGattDescriptor.PERMISSION_READ
+        )
+        notifyCharacteristic.addDescriptor(descriptor)
+    }
 
     companion object {
         const val TAG = "SOCKET_BLE"
@@ -33,8 +52,10 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
         const val BLE_NOT_ENABLED = "BLE is not enabled or ready to use"
         const val BLE_ALREADY_CONNECTED = "BLE service is already started"
         const val BLE_FAILED_ADVERTISING = "BLE failed to advertise"
+        const val BLE_FAILED_TO_ADD_SERVICE = "BLE failed to start service"
         const val BLE_POWERED_OFF = "BLE is power off state"
         const val BLE_DISCONNECTED = "BLE is disconnected"
+        const val BLE_PERMISSION_DENIED = "BLE Permission is denied"
     }
 
     internal sealed class State {
@@ -56,6 +77,7 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
         this.listener = listener
         try {
             if (state != State.Idle) {
+                Log.d(TAG, "open called when not idle state=$state")
                 this.listener?.onOpen(
                     Error(
                         GeotabDriveError.MODULE_BLE_ERROR,
@@ -102,18 +124,34 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
                 BluetoothGattService.SERVICE_TYPE_PRIMARY
             )
 
-            val descriptorID = UUID.fromString(NOTIFICATION_DESCRIPTOR_ID)
-            val descriptor = BluetoothGattDescriptor(
-                descriptorID,
-                BluetoothGattDescriptor.PERMISSION_WRITE or BluetoothGattDescriptor.PERMISSION_READ
-            )
-            notifyCharacteristic.addDescriptor(descriptor)
             service.addCharacteristic(notifyCharacteristic)
             service.addCharacteristic(writeCharacteristic)
 
-            bleAdapter.startServer(service, bluetoothGattServerCallback)
-            state = State.Opening
-            bleAdapter.startAdvertise(uuidStr, advertisingCallback)
+            // check for BLE and Advertising permissions before starting the service
+            checkPermissionForBTSDK31(Permission.BLUETOOTH_CONNECT) { connectPermission ->
+                if (connectPermission) {
+                    checkPermissionForBTSDK31(Permission.BLUETOOTH_ADVERTISE) { advertisePermission ->
+                        if (advertisePermission) {
+                            bleAdapter.startServer(service, bluetoothGattServerCallback)
+                            state = State.Opening
+                        } else {
+                            this.listener?.onOpen(
+                                Error(
+                                    GeotabDriveError.MODULE_BLE_ERROR,
+                                    BLE_PERMISSION_DENIED
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    this.listener?.onOpen(
+                        Error(
+                            GeotabDriveError.MODULE_BLE_ERROR,
+                            BLE_PERMISSION_DENIED
+                        )
+                    )
+                }
+            }
         } catch (ex: Exception) {
             Log.d(IoxBleModule.TAG, "startBle exception " + ex.stackTrace)
             this.listener?.onOpen(Error(GeotabDriveError.MODULE_BLE_ERROR, ex.message))
@@ -137,7 +175,7 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
 
     private val notifyCharacteristic = BluetoothGattCharacteristic(
         UUID.fromString(NOTIFY_CHARACTERISTIC_UUID),
-        BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+        BluetoothGattCharacteristic.PROPERTY_NOTIFY or BluetoothGattCharacteristic.PROPERTY_READ,
         BluetoothGattCharacteristic.PERMISSION_READ
     )
 
@@ -156,16 +194,33 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
 
         override fun onStartFailure(errorCode: Int) {
             Log.d(TAG, "Advertising Callback onStartFailure")
-            if (state != State.Opening) return
             listener?.onOpen(
                 Error(
                     GeotabDriveError.MODULE_BLE_ERROR,
                     BLE_FAILED_ADVERTISING
                 )
             )
+            stopBle(this)
         }
     }
     private val bluetoothGattServerCallback = object : BluetoothGattServerCallback() {
+        override fun onServiceAdded(status: Int, service: BluetoothGattService?) {
+            Log.d(TAG, "GattServer callback - onServiceAdded status=$status state=$state")
+
+            if (status != BluetoothGatt.GATT_SUCCESS || state != State.Opening) {
+                listener?.onOpen(
+                    Error(
+                        GeotabDriveError.MODULE_BLE_ERROR,
+                        BLE_FAILED_TO_ADD_SERVICE
+                    )
+                )
+                stopBle(advertisingCallback)
+                return
+            }
+
+            bleAdapter.startAdvertise(uuidStr, advertisingCallback)
+        }
+
         override fun onCharacteristicWriteRequest(
             device: BluetoothDevice?,
             requestId: Int,
@@ -179,12 +234,13 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
                 TAG,
                 "GattServer callback - onCharacteristicWriteRequest $requestId of characteristic ${characteristic?.uuid} "
             )
-            if (value == null) {
-                return
-            }
 
             if (device != null) {
                 bleAdapter.sendResponse(device, requestId)
+            }
+
+            if (value == null) {
+                return
             }
 
             read(value)
@@ -200,14 +256,16 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
             }
 
             if (newState == BluetoothGattServer.STATE_CONNECTED) {
-                bluetoothDevice = device
-                if (state != State.Advertising) return
+                if (!(state == State.Advertising || state == State.Opening)) {
+                    return
+                }
                 state = State.Connecting
                 val connected = bleAdapter.connect(device)
                 if (connected) {
+                    bluetoothDevice = device
                     bleAdapter.stopAdvertise(advertisingCallback)
                 }
-            } else if (newState == BluetoothGattServer.STATE_DISCONNECTED) {
+            } else if (newState == BluetoothGattServer.STATE_DISCONNECTED && bluetoothDevice == device) {
                 listener?.onCloseUnexpectedly(
                     Error(
                         GeotabDriveError.MODULE_BLE_ERROR,
@@ -228,6 +286,7 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
                 TAG,
                 "GattServer callback - onDescriptorReadRequest$requestId,$offset "
             )
+
             if (device != null) {
                 bleAdapter.sendResponse(device, requestId)
             }
@@ -251,17 +310,20 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
         ) {
             Log.d(
                 TAG,
-                "GattServer callback - onDescriptorWriteRequest- requestid, offset - $requestId,$offset "
+                "GattServer callback - onDescriptorWriteRequest- requestId, offset - $requestId,$offset "
             )
 
-            if (device == null || value == null || device != bluetoothDevice) {
+            if (device != null) {
+                bleAdapter.sendResponse(device, requestId)
+            }
+
+            if (value == null || device != bluetoothDevice) {
                 return
             }
 
             if (state != State.Connecting) return
 
             if (value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
-                bleAdapter.sendResponse(device, requestId)
                 listener?.onOpen(null)
                 state = State.Connected
             }
@@ -304,6 +366,8 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
         if (deviceData.data.size == deviceData.length) {
             partialGoDeviceData = null
             listener?.onRead(deviceData.data)
+        } else if (deviceData.data.size > deviceData.length) {
+            partialGoDeviceData = null
         }
     }
 
@@ -314,6 +378,15 @@ class SocketAdapterBleDefault internal constructor(private val bleAdapter: BleAd
         bleAdapter.stopServer()
         bleAdapter.unregisterBleStateOffCallback()
         state = State.Idle
+        bluetoothDevice = null
+    }
+
+    private fun checkPermissionForBTSDK31(permission: Permission, callback: (Boolean) -> Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissionHelper.checkPermission(arrayOf(permission), callback)
+        } else {
+            callback(true)
+        }
     }
 
     data class PartialGoDeviceData(val data: ByteArray, val length: Int) {

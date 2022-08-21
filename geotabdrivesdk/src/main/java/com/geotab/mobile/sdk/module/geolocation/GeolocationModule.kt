@@ -8,6 +8,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
 import androidx.core.location.LocationManagerCompat
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.GeolocationCoordinates
@@ -15,17 +16,21 @@ import com.geotab.mobile.sdk.models.GeolocationPosition
 import com.geotab.mobile.sdk.models.GeolocationResult
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
+import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
+import com.geotab.mobile.sdk.module.Result
+import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.permission.PermissionDelegate
 import com.geotab.mobile.sdk.permission.PermissionHelper
 import com.geotab.mobile.sdk.util.JsonUtil
+import java.io.ByteArrayOutputStream
 import java.util.Date
 
 class GeolocationModule(
     val context: Context,
     permissionDelegate: PermissionDelegate,
     private val evaluate: (String, (String) -> Unit) -> Unit,
-    private val push: (ModuleEvent) -> Unit
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
 ) : Module("geolocation"), android.location.LocationListener {
 
     companion object {
@@ -35,6 +40,7 @@ class GeolocationModule(
         const val templateFileName = "GeolocationModule.Script.js"
         const val INTERVAL = 0.toLong()
         const val DISTANCE = 0.toFloat()
+        const val TAG = "GeolocationModule"
     }
 
     private val locationManager: LocationManager by lazy {
@@ -46,7 +52,7 @@ class GeolocationModule(
     }
 
     var started = false
-    var isHighAccuracyEnabled = false
+    private var isHighAccuracyEnabled = false
     private var lastLocationUpdate = GeolocationResult(null, null)
 
     init {
@@ -59,11 +65,17 @@ class GeolocationModule(
     }
 
     private fun updateLocation(geolocationResult: GeolocationResult) {
-        val json = JsonUtil.toJson(geolocationResult)
+        val outputStream = ByteArrayOutputStream()
+        JsonUtil.toJsonStreaming(outputStream, geolocationResult)
+        val json = String(outputStream.toByteArray())
 
-        val scripts = """window.$geotabModules.$name.result = $json;"""
+        val scripts = """
+            if (window.$geotabModules != null) {
+                window.$geotabModules.$name.result = $json;
+            }
+            """.trimMargin()
         evaluate(scripts) {}
-        push(ModuleEvent("geolocation.result", "{ detail: $json }"))
+        push(ModuleEvent("geolocation.result", "{ detail: $json }")) {}
     }
 
     @SuppressLint("MissingPermission")
@@ -132,9 +144,27 @@ class GeolocationModule(
             location.bearing.toDouble(),
             location.speed.toDouble()
         )
-        val position = GeolocationPosition(coordinates, Date().time)
-        val result = GeolocationResult(position, null)
-        updateLocation(result)
+
+        try {
+            val validatedCoordinates = GeolocationCoordinates(
+                coordinates.geolocationLatitude,
+                coordinates.geolocationLongitude,
+                coordinates.geolocationAltitude,
+                coordinates.geolocationAccuracy,
+                coordinates.geolocationAltitudeAccuracy,
+                coordinates.geolocationHeading,
+                coordinates.geolocationSpeed
+            )
+
+            val position = GeolocationPosition(validatedCoordinates, Date().time)
+            val result = GeolocationResult(position, null)
+            updateLocation(result)
+        } catch (e: Exception) {
+            updateLocation(GeolocationResult(null, POSITION_UNAVAILABLE))
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "OutOfMemoryError onLocationChange", e)
+            updateLocation(GeolocationResult(null, POSITION_UNAVAILABLE))
+        }
     }
 
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}

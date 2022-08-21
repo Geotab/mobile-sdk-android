@@ -75,8 +75,9 @@ abstract class BaseCallbackFunction(open val name: String) :
      * Times out in [DriveSdkConfig.apiCallTimeoutMilli] if no response is returned in time.
      *
      * @param context Android [Context] for instantiating a Mustache instance
-     * @param webDriveDelegate to evaluate the JavaScript
+     * @param evaluate to evaluate the JavaScript
      * @param callback where the result of the call is returned to
+     * @param coroutineScope with the scope being used by the coroutine
      */
     fun callJavascript(
         context: Context,

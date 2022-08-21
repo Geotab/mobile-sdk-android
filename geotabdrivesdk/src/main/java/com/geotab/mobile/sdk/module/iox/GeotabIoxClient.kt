@@ -31,6 +31,7 @@ class GeotabIoxClient(
         fun onStart(exception: Error? = null)
         fun onStoppedUnexpectedly(exception: Error)
         fun onEvent(deviceEvent: DeviceEvent?, exception: Error? = null)
+        fun onDisconnect()
     }
 
     fun start(listener: Listener) {
@@ -133,6 +134,10 @@ class GeotabIoxClient(
                 }
             }
         }
+    }
+
+    override fun onDisconnect() {
+        listener?.onDisconnect()
     }
 
     private fun sendSyncMessage() {

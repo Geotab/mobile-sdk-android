@@ -127,4 +127,12 @@ interface DriveSdk {
      * Set custom url for the webview with the given path and last server address will be the host.
      */
     fun setCustomURLPath(path: String)
+
+    /**
+     * Get device events from IOXBLE and IOXUSB as Json string in the callback.
+     * Callback returns Json string {Type:Int and DeviceEvent : Json String}
+     *  - Type being the type of IOX, 0 for USB and 1 for BLE
+     *  - DeviceEvent is the Json string of the device event object.
+     */
+    fun getDeviceEvents(callback: (Result<Success<String>, Failure>) -> Unit)
 }

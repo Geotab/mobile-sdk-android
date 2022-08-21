@@ -2,9 +2,20 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.geotab.mobile.sdk">
 
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -20,13 +31,13 @@
             android:theme="@style/Theme.Transparent"
             android:exported="false"/>
         <activity android:name="com.geotab.mobile.sdk.NotificationActivity"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
         <activity android:name="com.geotab.mobile.sdk.UsbConnectionActivity"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
@@ -39,15 +50,12 @@
                 android:resource="@xml/accessory_filter" />
         </activity>
 
-        <receiver
-            android:name="com.geotab.mobile.sdk.module.localNotification.ClickNotificationReceiver"
-            android:exported="false" />
-
         <service android:name="com.geotab.mobile.sdk.module.app.ForeGroundService" />
 
         <receiver
             android:name="com.geotab.mobile.sdk.module.localNotification.ClearNotificationReceiver"
             android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

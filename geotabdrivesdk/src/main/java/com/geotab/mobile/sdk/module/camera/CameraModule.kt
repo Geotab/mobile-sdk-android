@@ -3,13 +3,20 @@ package com.geotab.mobile.sdk.module.camera
 import android.content.Context
 import com.geotab.mobile.sdk.ModuleContainerDelegate
 import com.geotab.mobile.sdk.module.Module
+import com.geotab.mobile.sdk.permission.PermissionDelegate
+import com.geotab.mobile.sdk.permission.PermissionHelper
 
 class CameraModule(
     context: Context,
     cameraDelegate: CameraDelegate,
+    permissionDelegate: PermissionDelegate,
     moduleContainerDelegate: ModuleContainerDelegate,
     override val name: String = "camera"
 ) : Module(name) {
+    val permissionHelper: PermissionHelper by lazy {
+        PermissionHelper(context, permissionDelegate)
+    }
+
     companion object {
         const val CAMERA_NOT_AVAILABLE = "Device doesn\'t have a camera "
         const val FILE_ALREADY_EXIST = "Given filename already exists"
@@ -18,6 +25,7 @@ class CameraModule(
         const val DISPATCH_INTENT_ERROR = "Error in dispatching camera intent"
         const val FILENAME_FORMAT = "yyyyMMdd_HHmmssSSS"
         const val ENCODING_TYPE_EXT = ".png"
+        const val PERMISSION_DENIED = "PERMISSION_DENIED"
     }
     init {
         functions.add(CaptureImageFunction(context = context, cameraDelegate = cameraDelegate, moduleContainerDelegate = moduleContainerDelegate, module = this))

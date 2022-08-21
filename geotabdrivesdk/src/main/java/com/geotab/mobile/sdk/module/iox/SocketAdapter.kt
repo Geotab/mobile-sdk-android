@@ -9,6 +9,7 @@ abstract class SocketAdapter {
         fun onCloseUnexpectedly(exception: Error)
         fun onRead(byteArray: ByteArray?, exception: Error? = null)
         fun onWrite(exception: Error? = null)
+        fun onDisconnect()
     }
 
     abstract fun open(listener: Listener, autoConnect: Boolean = false)

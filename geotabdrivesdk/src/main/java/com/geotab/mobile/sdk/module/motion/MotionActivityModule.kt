@@ -4,7 +4,10 @@ import android.content.Context
 import android.widget.Toast
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.models.enums.MotionEnum
+import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
+import com.geotab.mobile.sdk.module.Result
+import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.permission.PermissionDelegate
 import com.geotab.mobile.sdk.permission.PermissionHelper
@@ -13,7 +16,7 @@ class MotionActivityModule(
     private val context: Context,
     permissionDelegate: PermissionDelegate,
     private val adapter: MotionActivityAdapterDefault = MotionActivityAdapterDefault(context),
-    private val push: (ModuleEvent) -> Unit,
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
     override val name: String = "motion"
 ) : Module(name) {
     var isPermissionGranted = false
@@ -39,10 +42,12 @@ class MotionActivityModule(
     }
 
     companion object {
+        const val TAG = "MOTION_MODULE"
         const val ERROR_MOTION_ACTIVITY = "Error in getting motion activity. "
         const val ERROR_ACTIVATING_MOTION_ACTIVITY = "Motion Activity Not Available"
         const val ERROR_ACTIVATING_MOTION_ACTIVITY_PERMISSION =
             "Motion tracking permission not authorized"
+        const val ERROR_STOP_MOTION_ACTIVITY = "Error in stopping motion activity."
     }
 
     fun startMonitoringMotionActivity(callback: (Boolean, Boolean) -> Unit) {
@@ -88,6 +93,6 @@ class MotionActivityModule(
                 "geotab.motion",
                 "{detail: ${motionActivityEnum.motionId}}"
             )
-        )
+        ) {}
     }
 }

@@ -14,12 +14,17 @@ sequenceDiagram
 
   usb->>gic: onOpen(exception?)
   gic->>iuc: onStart(exception?)
+  iuc->>wd: dispatcher.trigger(IoxAttached, true)
 
   usb->>usb: listen(inputStream)
 
   usb->>gic: onRead(byteArray)
   gic->>iuc: onEvent(json)
   iuc->>wd: dispatcher.trigger(NewIoxData, jsonObject)
+
+  usb->>gic: onDisconnect()
+  gic->>iuc: onDisconnect()
+  iuc->>wd: dispatcher.trigger(IoxAttached, false)
 ```
 
 ## GeotabIoxClient State Diagram
