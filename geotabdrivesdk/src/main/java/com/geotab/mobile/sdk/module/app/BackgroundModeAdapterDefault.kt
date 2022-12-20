@@ -21,7 +21,8 @@ class BackgroundModeAdapterDefault(private val lifecycleOwner: LifecycleOwner) :
     fun onAppDestroy() {
         delegate?.let { it(BackgroundMode(false)) }
     }
-    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
     fun onAppBackgrounded() {
         delegate?.let { it(BackgroundMode(true)) }
     }

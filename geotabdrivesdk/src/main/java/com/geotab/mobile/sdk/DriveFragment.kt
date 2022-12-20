@@ -72,6 +72,7 @@ import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.github.mustachejava.DefaultMustacheFactory
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -329,6 +330,16 @@ class DriveFragment :
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                delay(1000)
+                webView?.dispatchWindowVisibilityChanged(View.VISIBLE)
+            }
+        }
     }
 
     @Keep
