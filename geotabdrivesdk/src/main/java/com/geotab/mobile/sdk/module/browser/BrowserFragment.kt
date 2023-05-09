@@ -114,9 +114,7 @@ class BrowserFragment : Fragment() {
         with(this.webView.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
-            setAppCacheEnabled(true)
             cacheMode = WebSettings.LOAD_DEFAULT
-            setAppCachePath(webView.context.cacheDir.path)
             setSupportMultipleWindows(true)
             userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
             setGeolocationEnabled(true)

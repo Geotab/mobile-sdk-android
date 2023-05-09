@@ -8,7 +8,7 @@ typealias DriverActionNecessaryCallbackType = (driverActionArg: DriverActionNece
 typealias PageNavigationCallbackType = (path: String) -> Unit
 typealias LoginRequiredCallbackType = (loginRequiredArg: LoginRequiredArgument) -> Unit
 
-class UserModule(override val name: String = "user") : Module(name) {
+class UserModule : Module(MODULE_NAME) {
     var driverActionNecessaryCallback: DriverActionNecessaryCallbackType = {}
     var pageNavigationCallback: PageNavigationCallbackType = {}
     var loginRequiredCallback: LoginRequiredCallbackType = {}
@@ -22,5 +22,9 @@ class UserModule(override val name: String = "user") : Module(name) {
         functions.add(DriverActionNecessaryFunction(module = this))
         functions.add(PageNavigationFunction(module = this))
         functions.add(LoginRequiredFunction(module = this))
+    }
+
+    companion object {
+        const val MODULE_NAME = "user"
     }
 }

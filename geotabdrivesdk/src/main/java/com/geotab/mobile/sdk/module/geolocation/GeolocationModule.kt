@@ -31,7 +31,7 @@ class GeolocationModule(
     permissionDelegate: PermissionDelegate,
     private val evaluate: (String, (String) -> Unit) -> Unit,
     private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
-) : Module("geolocation"), android.location.LocationListener {
+) : Module(MODULE_NAME), android.location.LocationListener {
 
     companion object {
         const val PERMISSION_DENIED = "PERMISSION_DENIED"
@@ -41,6 +41,7 @@ class GeolocationModule(
         const val INTERVAL = 0.toLong()
         const val DISTANCE = 0.toFloat()
         const val TAG = "GeolocationModule"
+        const val MODULE_NAME = "geolocation"
     }
 
     private val locationManager: LocationManager by lazy {
@@ -69,12 +70,12 @@ class GeolocationModule(
         JsonUtil.toJsonStreaming(outputStream, geolocationResult)
         val json = String(outputStream.toByteArray())
 
-        val scripts = """
-            if (window.$geotabModules != null) {
+        val script = """
+            if (window.$geotabModules != null && window.$geotabModules.$name != null) {
                 window.$geotabModules.$name.result = $json;
             }
             """.trimMargin()
-        evaluate(scripts) {}
+        evaluate(script) {}
         push(ModuleEvent("geolocation.result", "{ detail: $json }")) {}
     }
 

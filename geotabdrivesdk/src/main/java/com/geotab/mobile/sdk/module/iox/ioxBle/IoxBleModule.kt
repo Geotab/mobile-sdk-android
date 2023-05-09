@@ -25,28 +25,36 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import kotlin.coroutines.CoroutineContext
 
+data class IoxStateEventDetail(val state: Int)
+data class IoxStateEvent(val detail: IoxStateEventDetail)
+
 class IoxBleModule(
     private var ioxClient: GeotabIoxClient,
     private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
-    override val name: String = "ioxble"
-) : Module(name), GeotabIoxClient.Listener, CoroutineScope {
+    private val evaluate: (String, (String) -> Unit) -> Unit
+) : Module(MODULE_NAME), GeotabIoxClient.Listener, CoroutineScope {
     var deviceEventCallback: (Result<Success<String>, Failure>) -> Unit = {}
     constructor(
         context: Context,
         permissionDelegate: PermissionDelegate,
-        push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
+        push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
+        evaluate: (String, (String) -> Unit) -> Unit
     ) : this(
         GeotabIoxClient(
             SocketAdapterBleDefault(context, PermissionHelper(context, permissionDelegate)),
             DeviceEventTransformer(),
             MainExecuter()
         ),
-        push
+        push,
+        evaluate
     )
 
     companion object {
         const val TAG = "BLE_MODULE"
         const val BLE_ALREADY_PROCESSING = "BLE connection is already in progress"
+        const val STATE_PROPERTY_NAME = "state"
+        const val STATE_EVENT_NAME = "ioxble.state"
+        const val MODULE_NAME = "ioxble"
     }
 
     private val fsExecutor = newSingleThreadExecutor().asCoroutineDispatcher()
@@ -68,6 +76,13 @@ class IoxBleModule(
                 module = this
             )
         )
+    }
+
+    override fun scripts(context: Context): String {
+        var scripts = super.scripts(context)
+        val state = toIoxBleState(ioxClient.state)
+        scripts += updateConnectionStatePropertyScript(state)
+        return scripts
     }
 
     fun start(uuidStr: String, jsCallback: (Result<Success<String>, Failure>) -> Unit) {
@@ -152,5 +167,35 @@ class IoxBleModule(
 
     override fun onDisconnect() {
         Log.d(TAG, "Iox device disconnected")
+    }
+
+    override fun onStateUpdate(state: GeotabIoxClient.State) {
+        val ioxBleState = toIoxBleState(state)
+        evaluate(updateConnectionStatePropertyScript(ioxBleState)) {}
+        push(
+            ModuleEvent(
+                STATE_EVENT_NAME,
+                JsonUtil.toJson(IoxStateEvent(IoxStateEventDetail(ioxBleState.ioxBleStateId)))
+            )
+        ) {}
+    }
+
+    private fun updateConnectionStatePropertyScript(state: IoxBleState): String {
+        return """
+            if (window.$geotabModules !== undefined && window.$geotabModules.$name !== undefined) {
+                window.$geotabModules.$name.$STATE_PROPERTY_NAME = ${state.ioxBleStateId};
+            }
+        """.trimIndent()
+    }
+
+    private fun toIoxBleState(clientState: GeotabIoxClient.State): IoxBleState {
+        val ioxBleState = when (clientState) {
+            is GeotabIoxClient.State.Idle -> IoxBleState.IDLE
+            is GeotabIoxClient.State.Opening -> IoxBleState.ADVERTISING
+            is GeotabIoxClient.State.Syncing -> IoxBleState.SYNCING
+            is GeotabIoxClient.State.Handshaking -> IoxBleState.HANDSHAKING
+            is GeotabIoxClient.State.Connected -> IoxBleState.CONNECTED
+        }
+        return ioxBleState
     }
 }

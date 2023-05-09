@@ -3,6 +3,7 @@ package com.geotab.mobile.sdk.module.iox
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.DeviceEvent
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
+import com.geotab.mobile.sdk.module.iox.ioxBle.SocketAdapterBleDefault
 
 class GeotabIoxClient(
     private val socket: SocketAdapter,
@@ -11,15 +12,19 @@ class GeotabIoxClient(
 ) : SocketAdapter.Listener {
 
     private var listener: Listener? = null
-    internal var state: State = State.Idle
-        private set
+    var state: State = State.Idle
+        set(value) {
+            field = value
+            listener?.onStateUpdate(state)
+        }
+
     var uuidStr: String? = null
         set(value) {
             socket.uuidStr = value
             field = value
         }
 
-    internal sealed class State {
+    sealed class State {
         object Idle : State()
         object Opening : State()
         object Syncing : State()
@@ -32,9 +37,19 @@ class GeotabIoxClient(
         fun onStoppedUnexpectedly(exception: Error)
         fun onEvent(deviceEvent: DeviceEvent?, exception: Error? = null)
         fun onDisconnect()
+        fun onStateUpdate(state: State)
     }
 
     fun start(listener: Listener) {
+        if (state != State.Idle) {
+            listener.onStart(
+                Error(
+                    GeotabDriveError.MODULE_BLE_ERROR,
+                    SocketAdapterBleDefault.BLE_ALREADY_CONNECTED
+                )
+            )
+            return
+        }
         this.listener = listener
         state = State.Opening
         socket.open(this, true)
@@ -61,8 +76,10 @@ class GeotabIoxClient(
 
     override fun onCloseUnexpectedly(exception: Error) {
         listener?.also {
+            if (exception.message != SocketAdapterBleDefault.BLE_DISCONNECTED) {
+                this.listener = null
+            }
             state = State.Idle
-            this.listener = null
             it.onStoppedUnexpectedly(exception)
         }
     }
@@ -80,6 +97,7 @@ class GeotabIoxClient(
                         it.onStoppedUnexpectedly(exception)
                     }
                 }
+                State.Idle -> {}
             }
             return
         }
@@ -119,6 +137,8 @@ class GeotabIoxClient(
                 val event = transformer.transform(message.payload)
                 listener?.onEvent(event)
             }
+            State.Idle -> {}
+            State.Opening -> {}
         }
     }
 
@@ -133,6 +153,8 @@ class GeotabIoxClient(
                     }
                 }
             }
+            State.Connected -> {}
+            State.Idle -> {}
         }
     }
 
@@ -148,6 +170,10 @@ class GeotabIoxClient(
                     sendSyncMessage()
                 }
             }
+            State.Connected -> {}
+            is State.Handshaking -> {}
+            State.Idle -> {}
+            State.Opening -> {}
         }
     }
 }

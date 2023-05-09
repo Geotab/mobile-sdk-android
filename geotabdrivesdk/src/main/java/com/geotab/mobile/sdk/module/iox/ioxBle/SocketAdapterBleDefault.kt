@@ -272,7 +272,8 @@ class SocketAdapterBleDefault internal constructor(
                         BLE_DISCONNECTED
                     )
                 )
-                stopBle(advertisingCallback)
+                state = State.Advertising
+                bleAdapter.startAdvertise(uuidStr, advertisingCallback)
             }
         }
 

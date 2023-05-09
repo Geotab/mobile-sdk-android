@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.annotation.Keep
 import androidx.fragment.app.FragmentManager
 import com.geotab.mobile.sdk.Error
+import com.geotab.mobile.sdk.logging.InternalAppLogging.Companion.appLogger
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.BaseFunction
 import com.geotab.mobile.sdk.module.Failure
@@ -42,6 +43,9 @@ class OpenBrowserWindowFunction(
     private val context: Context,
     private val fragmentManager: FragmentManager
 ) : ModuleFunction, BaseFunction<OpenBrowserWindowArgument>() {
+    companion object {
+        const val TAG = "OPEN_BROWSER"
+    }
     override fun handleJavascriptCall(
         jsonString: String?,
         jsCallback: (Result<Success<String>, Failure>) -> Unit
@@ -93,6 +97,11 @@ class OpenBrowserWindowFunction(
                     context.startActivity(defaultBrowser)
                     jsCallback(Success("\"$url\""))
                 } catch (e: Exception) {
+                    appLogger?.error(
+                        TAG,
+                        "Error in opening external view for $url",
+                        e
+                    )
                     jsCallback(
                         Failure(
                             Error(

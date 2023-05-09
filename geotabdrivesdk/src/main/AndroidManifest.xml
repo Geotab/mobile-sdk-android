@@ -9,6 +9,7 @@
         android:name="android.hardware.camera.autofocus"
         android:required="false" />
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -24,6 +25,7 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"
         tools:ignore="ScopedStorage" />
+    <permission android:name="com.geotab.mobile.sdk.permission.USB_PERMISSION" />
 
     <application>
         <activity
@@ -37,7 +39,8 @@
             </intent-filter>
         </activity>
         <activity android:name="com.geotab.mobile.sdk.UsbConnectionActivity"
-            android:exported="true">
+            android:exported="true"
+            android:permission="com.geotab.mobile.sdk.permission.USB_PERMISSION">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
@@ -63,7 +66,7 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/camera_provider_paths" />
+                android:resource="@xml/file_provider_paths" />
         </provider>
 
         <meta-data

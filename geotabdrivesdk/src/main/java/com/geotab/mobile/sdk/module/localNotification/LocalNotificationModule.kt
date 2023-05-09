@@ -17,11 +17,16 @@ import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.permission.Permission
+import com.geotab.mobile.sdk.permission.PermissionDelegate
+import com.geotab.mobile.sdk.permission.PermissionHelper
 import com.geotab.mobile.sdk.repository.PreferenceNotificationRepository
 import com.geotab.mobile.sdk.util.JsonUtil
 
-class LocalNotificationModule(context: Context, override val name: String = "localNotification") :
-    Module(name) {
+class LocalNotificationModule(
+    context: Context,
+    permissionDelegate: PermissionDelegate
+) : Module(MODULE_NAME) {
     companion object {
         var actionHandler: ((Result<Success<String>, Failure>) -> Unit)? = null
         var actionIdentifier = emptyArray<String>()
@@ -36,6 +41,7 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
         const val NOTIFICATION_TEXT_NULL = "Notification text cannot be null"
         const val NOTIFICATION_TEXT_EMPTY = "Notification text cannot be empty"
         const val NOTIFICATION_ID_NULL = "Notification ID cannot be null"
+        const val MODULE_NAME = "localNotification"
 
         fun getNotificationManager(context: Context): NotificationManager {
             return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -49,6 +55,10 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
             context,
             NOTIFICATION_ID
         )
+    }
+
+    val permissionHelper: PermissionHelper by lazy {
+        PermissionHelper(context, permissionDelegate)
     }
 
     init {
@@ -78,6 +88,10 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
 
     fun checkPermission(): Boolean {
         return this.notificationManager.areNotificationsEnabled()
+    }
+
+    fun requestPermission(callback: (Boolean) -> Unit) {
+        permissionHelper.requestPermission(arrayOf(Permission.POST_NOTIFICATIONS), callback)
     }
 
     fun showNotification(id: Int, notification: Notification) =
@@ -129,7 +143,7 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
                     context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
                 // if the current application is active, bring it to foreground
-                activityManager.appTasks[0].moveToFront()
+                activityManager.appTasks.getOrNull(0)?.moveToFront()
             } else {
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                 context.startActivity(launchIntent)
@@ -154,7 +168,14 @@ class LocalNotificationModule(context: Context, override val name: String = "loc
                 }
             } catch (exception: Exception) {
                 actionHandler?.let {
-                    it(Failure(Error(GeotabDriveError.MODULE_NOTIFICATION_ERROR, exception.message)))
+                    it(
+                        Failure(
+                            Error(
+                                GeotabDriveError.MODULE_NOTIFICATION_ERROR,
+                                exception.message
+                            )
+                        )
+                    )
                 }
             }
         }

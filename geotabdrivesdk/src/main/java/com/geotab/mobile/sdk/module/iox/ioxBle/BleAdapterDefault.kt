@@ -1,5 +1,6 @@
 package com.geotab.mobile.sdk.module.iox.ioxBle
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -58,6 +59,7 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         }
     }
 
+    @SuppressLint("MissingPermission")
     override fun startAdvertise(serviceId: String?, callback: AdvertiseCallback) {
         val advertiseSettings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
@@ -76,10 +78,12 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         )
     }
 
+    @SuppressLint("MissingPermission")
     override fun stopAdvertise(advertisingCallback: AdvertiseCallback) {
         bluetoothAdapter?.bluetoothLeAdvertiser?.stopAdvertising(advertisingCallback)
     }
 
+    @SuppressLint("MissingPermission")
     override fun startServer(
         service: BluetoothGattService,
         bluetoothGattServerCallback: BluetoothGattServerCallback
@@ -89,6 +93,7 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         }
     }
 
+    @SuppressLint("MissingPermission")
     override fun stopServer() {
         gattServer?.apply {
             clearServices()
@@ -96,6 +101,7 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         }
     }
 
+    @SuppressLint("MissingPermission")
     override fun connect(bluetoothDevice: BluetoothDevice): Boolean {
         var connect = false
         gattServer?.apply {
@@ -104,12 +110,14 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         return connect
     }
 
+    @SuppressLint("MissingPermission")
     override fun cancelConnection(bluetoothDevice: BluetoothDevice) {
         gattServer?.apply {
             cancelConnection(bluetoothDevice)
         }
     }
 
+    @SuppressLint("MissingPermission")
     override fun notifyCharacteristicUpdate(
         bluetoothDevice: BluetoothDevice,
         bluetoothGattCharacteristic: BluetoothGattCharacteristic
@@ -119,6 +127,7 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         }
     }
 
+    @SuppressLint("MissingPermission")
     override fun sendResponse(bluetoothDevice: BluetoothDevice, requestId: Int) {
         Log.d(TAG, "Sending response to the remote device for the read or write request")
         gattServer?.apply {

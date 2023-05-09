@@ -9,7 +9,7 @@ import java.io.File
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
-class FileSystemModule(val context: Context) : Module("fileSystem"), CoroutineScope {
+class FileSystemModule(val context: Context) : Module(MODULE_NAME), CoroutineScope {
     companion object {
         const val fsPrefix = "drvfs"
         const val encoding = "UTF-8"
@@ -32,6 +32,7 @@ class FileSystemModule(val context: Context) : Module("fileSystem"), CoroutineSc
         const val PATH_IS_NOT_FOLDER = "Given path is not a folder: "
         const val INVALID_PATH = "Invalid path: "
         const val CANNOT_DELETE_ROOT_FOLDER = "You can't delete the root folder: "
+        const val MODULE_NAME = "fileSystem"
     }
 
     private val fsExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()

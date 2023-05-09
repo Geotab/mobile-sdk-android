@@ -1,28 +1,20 @@
 package com.geotab.mobile.sdk
 
 import android.annotation.SuppressLint
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
 import android.os.Bundle
 import android.print.PrintAttributes
 import android.print.PrintManager
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient
 import android.webkit.WebView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
-import com.geotab.mobile.sdk.fileChooser.FileChooserDelegate
 import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.module.Failure
@@ -49,14 +41,12 @@ import org.json.JSONObject
 // fragment initialization parameters
 private const val ARG_MODULES = "modules"
 private const val MODULE_PREF = "MODULE_PREF"
-private const val ANY_FILE = "*/*"
 
 class MyGeotabFragment :
     Fragment(),
     ModuleContainerDelegate,
     NetworkErrorDelegate,
     PermissionDelegate,
-    FileChooserDelegate,
     MyGeotabSdk {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
     // This property is only valid between onCreateView and onDestroyView.
@@ -65,8 +55,6 @@ class MyGeotabFragment :
     private val myGeotabUrl = "https://${MyGeotabConfig.serverAddress}"
     private val mustacheFactory by lazy { DefaultMustacheFactory() }
     private lateinit var preference: SharedPreferences
-    private var filePathCallback: ValueCallback<Array<Uri>>? = null
-    private var fileChooserParams: WebChromeClient.FileChooserParams? = null
 
     private val pushScriptUtil: PushScriptUtil by lazy {
         PushScriptUtil()
@@ -155,7 +143,7 @@ class MyGeotabFragment :
             scripts += deviceModule.getScriptFromTemplate(
                 it,
                 "Print.Script.js",
-                hashMapOf()
+                hashMapOf("interfaceName" to "AndroidFunctionProvider")
             )
 
             // This line needs to be the last one added to the scripts, after all the
@@ -175,25 +163,6 @@ class MyGeotabFragment :
         it.callback(it.result)
     }
 
-    private val startFileChoose =
-        registerForActivityResult(object : ActivityResultContracts.GetMultipleContents() {
-            override fun createIntent(context: Context, input: String): Intent {
-                val intent = super.createIntent(context, input)
-                if (fileChooserParams?.acceptTypes?.size?.let { it > 1 } == true) {
-                    intent.type = ANY_FILE
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES, fileChooserParams?.acceptTypes)
-                } else {
-                    intent.type = when (val fileType = fileChooserParams?.acceptTypes?.first() ?: ANY_FILE) {
-                        "" -> ANY_FILE
-                        else -> fileType
-                    }
-                }
-                return intent
-            }
-        }) {
-        filePathCallback?.onReceiveValue(it.toTypedArray())
-    }
-
     override fun askPermissionsResult(permissions: Array<Permission>, callback: (Boolean) -> Unit) {
         startForPermissionResult.launch(
             PermissionAttribute(
@@ -203,21 +172,6 @@ class MyGeotabFragment :
                 callback = callback
             )
         )
-    }
-
-    override fun uploadFileResult(
-        filePathCallback: ValueCallback<Array<Uri>>?,
-        fileChooserParams: WebChromeClient.FileChooserParams?
-    ) {
-        this.filePathCallback = filePathCallback
-        this.fileChooserParams = fileChooserParams
-        try {
-            startFileChoose.launch(
-                ""
-            )
-        } catch (exception: ActivityNotFoundException) {
-            Log.e(TAG, exception.message, exception)
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -361,9 +315,7 @@ class MyGeotabFragment :
         with(this.webView.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
-            setAppCacheEnabled(true)
             cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-            setAppCachePath(webView.context.cacheDir.path)
             mediaPlaybackRequiresUserGesture = false
             setSupportMultipleWindows(true)
             userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
@@ -375,10 +327,15 @@ class MyGeotabFragment :
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
         this.webView.loadUrl(myGeotabUrl)
         webViewClientUserContentController.addScriptOnPageFinished(moduleScripts)
+
+        context?.let {
+            val downloadFiles = DownloadFiles(evaluate, it, this)
+            this.webView.setDownloadListener(downloadFiles)
+            this.webView.addJavascriptInterface(downloadFiles, DownloadFiles.interfaceName)
+        }
+
         this.webView.addJavascriptInterface(this, Module.interfaceName)
         this.webView.webViewClient = webViewClientUserContentController
-        val downloadFiles = context?.let { DownloadFiles(it, this) }
-        this.webView.setDownloadListener(downloadFiles)
         this.webView.webChromeClient = context?.let {
             WebViewChromeClient(
                 PermissionHelper(it, this),
@@ -386,6 +343,15 @@ class MyGeotabFragment :
             )
         }
     }
+
+    private val evaluate: (String, (String) -> Unit) -> Unit =
+        { script: String, callback: (String) -> Unit ->
+            this.webView.post {
+                this.webView.evaluateJavascript(script) {
+                    callback(it)
+                }
+            }
+        }
 
     override fun onNetworkError() {
         errorView.let {

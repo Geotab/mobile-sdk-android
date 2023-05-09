@@ -16,13 +16,15 @@ import com.geotab.mobile.sdk.R
 internal fun replaceFragment(fragment: Fragment, tag: String, fragmentManager: FragmentManager) {
     val browserFragment = fragmentManager.findFragmentByTag(tag)
     if (browserFragment != null) {
-        fragmentManager.commit {
+        fragmentManager.commit(allowStateLoss = true) {
             remove(browserFragment)
         }
-        fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        if (!fragmentManager.isStateSaved) {
+            fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        }
     }
     fragmentManager.executePendingTransactions()
-    fragmentManager.commit {
+    fragmentManager.commit(allowStateLoss = true) {
         replace(R.id.content_frame, fragment, tag)
         setReorderingAllowed(true)
         addToBackStack(null)

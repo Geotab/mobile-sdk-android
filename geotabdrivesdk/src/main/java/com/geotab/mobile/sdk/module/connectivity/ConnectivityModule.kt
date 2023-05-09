@@ -15,9 +15,8 @@ import com.geotab.mobile.sdk.util.JsonUtil
 class ConnectivityModule(
     val context: Context,
     private val evaluate: (String, (String) -> Unit) -> Unit,
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
-    override val name: String = "connectivity"
-) : Module(name) {
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
+) : Module(MODULE_NAME) {
     var started: Boolean = false
 
     private val connectivityManager by lazy {
@@ -40,13 +39,17 @@ class ConnectivityModule(
         functions.add(StopFunction(module = this))
     }
 
+    companion object {
+        const val MODULE_NAME = "connectivity"
+    }
+
     override fun scripts(context: Context): String {
         var scripts = super.scripts(context)
         val type = getNetworkType()
 
         val connectivityJson =
             stateJson(type != ConnectivityType.NONE && type != ConnectivityType.UNKNOWN)
-        scripts += """window.$geotabModules.$name.state = $connectivityJson"""
+        scripts += """window.$geotabModules.$name.state = $connectivityJson;"""
         return scripts
     }
 
@@ -72,7 +75,12 @@ class ConnectivityModule(
     }
 
     private fun updateState(online: Boolean) {
-        val script = """window.$geotabModules.$name.state = ${stateJson(online)}"""
+        var script =
+            """
+                if (window.$geotabModules != null && window.$geotabModules.$name != null) { 
+                    window.$geotabModules.$name.state = ${stateJson(online)}
+                } 
+            """.trimMargin()
         evaluate(script) {}
     }
 

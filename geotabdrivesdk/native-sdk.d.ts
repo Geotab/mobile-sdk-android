@@ -8,6 +8,21 @@ export interface FileInfo {
     size?: number; // File size, if file is a directory, size is undefined
 }
 
+export interface GoDeviceData {
+    timestamp: number; // uint32, in ‘seconds’ counter starting from 1st of January 2002.
+    latitude: number; // int32, 1e-7 precision
+    longitude: number; // int32, 1e-7 precision 
+    roadSpeed: number; // int32
+    rpm: number; // int32, 0.25 precision
+    odometer: number; // uint32, 0.1 precision unit km
+    statusFlag: number; // uint32
+    tripOdometer: number; // uint32, 0.1 precision unit km
+    totalEngineHours: number; // uint32, 0.1 precision unit h
+    tripDuration: number; // uint32, unit sec
+    goDeviceId: number; // uint32
+    driverId: number; // uint32
+}
+
 declare namespace geotabModules {
     /********
      * device module: provides constant information about the mobile device that is running on.
@@ -29,6 +44,15 @@ declare namespace geotabModules {
         const model: string;
         // unique device identifier, transient. It could be changed anytime by user or policy.
         const uuid: string;
+
+        /*******
+         * Device Ready event
+         * 
+         * To listen for the event: 
+         * document.addEventListener("deviceready", () => {
+         * });
+         */
+        // event: "deviceready";
     }
 
     // local notification module
@@ -222,6 +246,12 @@ declare namespace geotabModules {
          */
         function updateLastServer(server: string, callback: (err?: Error, result?: undefined) => void);
 
+        /*******
+         * Clear all caches in the webview. After calling this, refreshing the webview is recommended.
+         * @param callback
+         *  result: undefined. Any other errors will be responded in the err argument of the callback.
+         */
+        function clearWebViewCache(argument: undefined, callback: (err?: Error, result?: undefined) => void);
     }
 
     namespace browser {
@@ -407,35 +437,83 @@ declare namespace geotabModules {
     }
 
     namespace ioxble {
+
+        enum State {
+            Idle = 0,
+            Advertising,
+            Syncing,
+            Handshaking,
+            Connected,
+            Disconnecting
+        }
+
+        /*******
+        * Read-only property indicating the current state of the IOX BLE module.
+        * 
+        * Possible State values:
+        * 
+        * - Idle: IOX BLE is not active. Incoming connections from a GO device will not be accepted.
+        * - Advertising: IOX BLE is advertising and waiting for a GO device to connect.
+        * - Syncing: A Bluetooth connection with has been established, starting communication with the GO device.
+        * - Handshaking: Communicating protocol requirements with the GO device.
+        * - Connected: The Bluetooth connection with a GO device is ready to receive data. DeviceEvents will now be published as ioxble.godevicedata events as they are transmitted.
+        * - Disconnecting: An active connection is being taken down. A new connection won't be accepted until the process is completed. Some platforms will immediately go to an Idle state on disconnect.
+        */
+        let state: State;
+
+        /*******
+         * window event. Fires whenever the IOX BLE state changes
+         * @param detail: { "state" : State }
+         */
+        // event: "ioxble.state"
+
+        /**********
+        * Start the IOX BLE service and move it to the Advertising state. Until stop() is called service will automatically return to Advertising again after a disconnection.
+        * 
+        * @param argument: string. The UUID unique to the GO device that will be connected
+        * @param callback: (err?: Error, result?: string) => void.
+        *      - err: Error. Set if an issue occurs during start, E.g. bluetooth is not enabled.
+        *      - result: string. On a successful start this value will be set. Its content is reserved for future use.
+        */
         function start(argument: string, callback: (err?: Error, result?: undefined) => void);
+
+        /**********
+        * Stop the IOX BLE service and return to the Idle state. 
+        * 
+        * @param argument: string. Reserved for future use. Should be set to null.
+        * @param callback: (err?: Error, result?: string) => void
+        *      - err: Error. Set if an issue occurs during stop.
+        *      - result: string. On a successful stop this value will be set. Its content is reserved for future use.
+        */
         function stop(argument: undefined, callback: (err?: Error, result?: undefined) => void);
 
         /*******
-         * ioxble.godevicedata event
-         * @param detail: GoDeviceData
-         *
-         * To listen for the event:
-         * window.addEventListener("ioxble.godevicedata", (param) => {
-         *     console.log("ioxble.godevicedata event: ", param.detail); // detail is of type GoDeviceData
-         * });
-         */
+        * ioxble.godevicedata event
+        * @param detail: GoDeviceData
+        *
+        * To listen for the event:
+        * 
+        * window.addEventListener("ioxble.godevicedata", (param) => {
+        *     console.log("ioxble.godevicedata event: ", param.detail); // detail is of type GoDeviceData
+        * });
+        */
         // event: "ioxble.godevicedata";
 
         /*******
-         * ioxble.error event, fires only after a successfully start() and there's an error happened.
-         * ioxble.error will not be fired if ioxble is not started successfully.
-         *
-         * During an start() session, error could happens.
-         * Examples like losing connection, user invoking permission, user disabling Bluetooth device on phone.
-         *
-         * @param detail: Error
-         *
-         *
-         * To listen for the iox ble error event:
-         * window.addEventListener("ioxble.error", (param) => {
-         *     console.log("ioxble.error event: ", param.detail); // detail is of type Error
-         * });
-         */
+        * ioxble.error event, fires only after a successfully start() and an error occurs
+        * 
+        * ioxble.error will not be fired if ioxble is not started successfully.
+        *
+        * Examples: losing connection, user invoking permission, user disabling Bluetooth device on phone.
+        *
+        * @param detail: Error
+        *
+        * To listen for the iox ble error event:
+        * 
+        * window.addEventListener("ioxble.error", (param) => {
+        *     console.log("ioxble.error event: ", param.detail); // detail is of type Error
+        * });
+        */
         // event: "ioxble.error";
     }
 

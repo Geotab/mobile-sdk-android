@@ -25,7 +25,7 @@ class PickImageLauncher(
         arguments: PickImageFunctionArgument?
     ) {
         try {
-            val fsModule = moduleContainerDelegate.findModule("fileSystem") as? FileSystemModule
+            val fsModule = moduleContainerDelegate.findModule(FileSystemModule.MODULE_NAME) as? FileSystemModule
             val fsRootUri = fsModule?.drvfsRootUri ?: run {
                 callback(
                     Failure(

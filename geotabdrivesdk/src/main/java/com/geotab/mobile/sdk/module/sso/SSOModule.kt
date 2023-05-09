@@ -8,12 +8,12 @@ import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
 class SSOModule(
-    fragmentManager: FragmentManager,
-    override val name: String = "sso"
-) : Module(name), CoroutineScope {
+    fragmentManager: FragmentManager
+) : Module(MODULE_NAME), CoroutineScope {
 
     companion object {
         const val SAML_LAUNCHING_BROWSER = "Closing to launch another browser"
+        const val MODULE_NAME = "sso"
     }
 
     private val fsExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()

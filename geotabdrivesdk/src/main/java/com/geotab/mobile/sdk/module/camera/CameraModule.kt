@@ -10,9 +10,8 @@ class CameraModule(
     context: Context,
     cameraDelegate: CameraDelegate,
     permissionDelegate: PermissionDelegate,
-    moduleContainerDelegate: ModuleContainerDelegate,
-    override val name: String = "camera"
-) : Module(name) {
+    moduleContainerDelegate: ModuleContainerDelegate
+) : Module(MODULE_NAME) {
     val permissionHelper: PermissionHelper by lazy {
         PermissionHelper(context, permissionDelegate)
     }
@@ -26,6 +25,7 @@ class CameraModule(
         const val FILENAME_FORMAT = "yyyyMMdd_HHmmssSSS"
         const val ENCODING_TYPE_EXT = ".png"
         const val PERMISSION_DENIED = "PERMISSION_DENIED"
+        const val MODULE_NAME = "camera"
     }
     init {
         functions.add(CaptureImageFunction(context = context, cameraDelegate = cameraDelegate, moduleContainerDelegate = moduleContainerDelegate, module = this))

@@ -272,4 +272,12 @@ class FileUtils(val context: Context, private val uri: UriWrapper? = null) {
             )
         }
     }
+
+    fun deleteApplicationCacheDir(): Boolean {
+        return File(context.cacheDir.path).deleteRecursively()
+    }
+
+    fun deleteServiceWorkerDir(): Boolean {
+        return File("${context.dataDir.path}/app_webview/Default/Service Worker/").deleteRecursively()
+    }
 }

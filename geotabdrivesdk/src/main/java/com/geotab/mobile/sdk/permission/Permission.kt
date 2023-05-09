@@ -7,5 +7,6 @@ enum class Permission(val request: String) {
     ACTIVITY_RECOGNITION("android.permission.ACTIVITY_RECOGNITION"),
     CAMERA("android.permission.CAMERA"),
     BLUETOOTH_CONNECT("android.permission.BLUETOOTH_CONNECT"),
-    BLUETOOTH_ADVERTISE("android.permission.BLUETOOTH_ADVERTISE")
+    BLUETOOTH_ADVERTISE("android.permission.BLUETOOTH_ADVERTISE"),
+    POST_NOTIFICATIONS("android.permission.POST_NOTIFICATIONS"),
 }

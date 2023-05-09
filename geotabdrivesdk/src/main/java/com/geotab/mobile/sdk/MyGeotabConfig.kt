@@ -6,7 +6,7 @@ import androidx.annotation.Keep
 class MyGeotabConfig {
     @Keep
     companion object {
-        var serverAddress = "my3.geotab.com"
+        var serverAddress = "my.geotab.com"
         var allowThirdPartyCookies = false
     }
 }

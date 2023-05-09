@@ -11,15 +11,15 @@ import kotlin.coroutines.CoroutineContext
 
 class BrowserModule(
     fragmentManager: FragmentManager,
-    context: Context,
-    override val name: String = "browser"
-) : Module(name), CoroutineScope {
+    context: Context
+) : Module(MODULE_NAME), CoroutineScope {
     companion object {
         const val templateFileName = "BrowserModule.Script.js"
         const val openFunctionName = "openBrowserWindow"
         const val closeFunctionName = "closeBrowserWindow"
         const val ERROR_GETTING_MAPS_APP_IN_DEVICE = "No Google Play Services or maps apps installed in the device"
         const val BROWSER_TAG = "BROWSER"
+        const val MODULE_NAME = "browser"
     }
     private val fsExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     private val fsContext: CoroutineScope = CoroutineScope(fsExecutor)

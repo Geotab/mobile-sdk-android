@@ -25,7 +25,6 @@ import com.geotab.mobile.sdk.module.localNotification.NotificationBuilderProvide
 // Fixed ID for the 'foreground' notification
 private const val NOTIFICATION_ID = 101
 class ForeGroundService : Service() {
-
     // Binder given to clients
     private val binder: IBinder = ForegroundBinder()
 
@@ -75,7 +74,7 @@ class ForeGroundService : Service() {
      * Stop background mode.
      */
     private fun awakeRelease() {
-        stopForeground(true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
         getNotificationManager(applicationContext).cancel(NOTIFICATION_ID)
         wakeLock?.release()
         wakeLock = null

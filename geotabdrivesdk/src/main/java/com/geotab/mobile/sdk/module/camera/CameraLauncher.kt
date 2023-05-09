@@ -35,7 +35,7 @@ class CameraLauncher(
     fun dispatchTakePictureIntent() {
 
         exceptionThrown = false
-        val fsModule = moduleContainerDelegate.findModule("fileSystem") as? FileSystemModule
+        val fsModule = moduleContainerDelegate.findModule(FileSystemModule.MODULE_NAME) as? FileSystemModule
         fsRootUri = fsModule?.drvfsRootUri ?: run {
             callback(Failure(Error(GeotabDriveError.FILE_EXCEPTION, FileSystemModule.FILESYSTEM_NOT_EXIST))); return
         }

@@ -1,5 +1,6 @@
 package com.geotab.mobile.sdk
 
+import android.annotation.SuppressLint
 import android.net.http.SslError
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
@@ -24,6 +25,7 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
         super.onReceivedError(view, request, error)
     }
 
+    @SuppressLint("WebViewClientOnReceivedSslError")
     override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, err: SslError) {
         if (BuildConfig.DEBUG) {
             handler.proceed()

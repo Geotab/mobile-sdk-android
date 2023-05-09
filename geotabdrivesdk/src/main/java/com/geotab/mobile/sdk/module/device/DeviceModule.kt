@@ -9,11 +9,14 @@ import com.geotab.mobile.sdk.util.UserAgentUtil
 class DeviceModule(
     context: Context,
     preferences: SharedPreferences,
-    private val userAgentUtil: UserAgentUtil,
-    override val name: String = "device"
-) : Module(name) {
+    private val userAgentUtil: UserAgentUtil
+) : Module(MODULE_NAME) {
 
-    val device: Device = Device(context, preferences)
+    private val device: Device = Device(context, preferences)
+
+    companion object {
+        const val MODULE_NAME = "device"
+    }
 
     override fun scripts(context: Context): String {
 

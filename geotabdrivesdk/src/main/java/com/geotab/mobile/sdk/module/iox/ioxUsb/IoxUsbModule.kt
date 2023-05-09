@@ -23,9 +23,8 @@ import com.geotab.mobile.sdk.util.JsonUtil
 
 class IoxUsbModule(
     var context: Context,
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
-    override val name: String = "ioxusb"
-) : Module(name), GeotabIoxClient.Listener {
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
+) : Module(MODULE_NAME), GeotabIoxClient.Listener {
     var deviceEventCallback: (Result<Success<String>, Failure>) -> Unit = {}
     private val transformer = DeviceEventTransformer()
     private val socketUsbAdapterDefault: SocketAdapter = SocketAdapterUsbDefault(context)
@@ -37,6 +36,7 @@ class IoxUsbModule(
         const val IOX_CONNECTION = "iox.data"
         const val IOX_ATTACHED = "{ detail: { attached: true } }"
         const val IOX_DETACHED = "{ detail: { attached: false } }"
+        const val MODULE_NAME = "ioxusb"
     }
 
     fun start() {
@@ -84,5 +84,9 @@ class IoxUsbModule(
     override fun onDisconnect() {
         Log.d(TAG, "Iox device disconnected")
         push(ModuleEvent(IOX_CONNECTION, IOX_DETACHED)) {}
+    }
+
+    override fun onStateUpdate(state: GeotabIoxClient.State) {
+        Log.d(TAG, "Iox state updated")
     }
 }

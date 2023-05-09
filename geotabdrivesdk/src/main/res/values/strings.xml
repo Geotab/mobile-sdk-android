@@ -6,6 +6,4 @@
     <string name="networkError">No Network Connection</string>
     <string name="download_error" tools:ignore="MissingTranslation">Download failed.</string>
     <string name="downloading" tools:ignore="MissingTranslation">Downloading %1$s</string>
-    <string name="notification_channel_name" tools:ignore="MissingTranslation">Drive push notification</string>
-    <string name="notification_channel_description" tools:ignore="MissingTranslation">Push notifications sent to the driver</string>
 </resources>

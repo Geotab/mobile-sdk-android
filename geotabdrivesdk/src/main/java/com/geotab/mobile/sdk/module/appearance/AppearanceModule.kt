@@ -6,10 +6,13 @@ import com.geotab.mobile.sdk.models.enums.AppearanceType
 import com.geotab.mobile.sdk.module.Module
 
 class AppearanceModule(
-    private val context: Context,
-    override val name: String = "appearance"
-) : Module(name) {
+    private val context: Context
+) : Module(MODULE_NAME) {
     private val appearanceProperty = "appearanceType"
+
+    companion object {
+        const val MODULE_NAME = "appearance"
+    }
 
     override fun scripts(context: Context): String {
         var scripts = super.scripts(context)

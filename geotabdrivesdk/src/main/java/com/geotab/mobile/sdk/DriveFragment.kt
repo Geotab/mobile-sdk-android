@@ -16,6 +16,9 @@ import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
+import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
+import com.geotab.mobile.sdk.logging.Logger
+import com.geotab.mobile.sdk.logging.Logging
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.models.publicModels.CredentialResult
@@ -96,6 +99,7 @@ class DriveFragment :
     ModuleContainerDelegate,
     NetworkErrorDelegate {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
+
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
@@ -103,21 +107,22 @@ class DriveFragment :
         PushScriptUtil()
     }
 
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit = { moduleEvent, callBack ->
-        val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit =
+        { moduleEvent, callBack ->
+            val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
 
-        if (validEvent) {
-            val script = """
+            if (validEvent) {
+                val script = """
     window.dispatchEvent(new CustomEvent("${moduleEvent.event}", ${moduleEvent.params}));
 """
 
-            this.webView?.post {
-                this.webView?.evaluateJavascript(script) {}
-            }
+                this.webView?.post {
+                    this.webView?.evaluateJavascript(script) {}
+                }
 
-            callBack(Success(""))
+                callBack(Success(""))
+            }
         }
-    }
 
     private val evaluate: (String, (String) -> Unit) -> Unit =
         { script: String, callback: (String) -> Unit ->
@@ -153,6 +158,7 @@ class DriveFragment :
     private var modules: ArrayList<Module> = arrayListOf()
     private var geotabCredentials: CredentialResult? = null
     private var customUrl: String? = null
+    private var logger: Logging = Logger.shared
     private val userModule: UserModule by lazy {
         UserModule()
     }
@@ -199,7 +205,7 @@ class DriveFragment :
         IoxUsbModule(requireContext(), push = push)
     }
     private val ioxbleModule: IoxBleModule by lazy {
-        IoxBleModule(requireContext(), permissionDelegate = this, push = push)
+        IoxBleModule(requireContext(), permissionDelegate = this, push = push, evaluate = evaluate)
     }
 
     private val modulesInternal: ArrayList<Module?> by lazy {
@@ -211,7 +217,7 @@ class DriveFragment :
             speechModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
             activity?.let { WebViewModule(it, goBack) },
-            context?.let { LocalNotificationModule(it) },
+            context?.let { LocalNotificationModule(it, this) },
             batteryModule,
             appearanceModule,
             motionActivityModule,
@@ -256,6 +262,7 @@ class DriveFragment :
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         Module.mustacheFactory = mustacheFactory
         arguments?.let { bundle ->
             initializeModules((bundle.getSerializable(ARG_MODULES) as? ArrayList<*>)?.filterIsInstance<Module>())
@@ -295,7 +302,7 @@ class DriveFragment :
 
         with(appModule) {
             initValues(this@DriveFragment.requireContext())
-            startMonitoringBackground()
+            startForegroundService()
         }
         ioxUsbModule.start()
     }
@@ -308,7 +315,6 @@ class DriveFragment :
     override fun onDetach() {
         super.onDetach()
         batteryModule.stopMonitoringBatteryStatus()
-        appModule.stopMonitoringBackground()
         speechModule.engineShutDown()
     }
 
@@ -325,6 +331,8 @@ class DriveFragment :
         webView = null
 
         ioxUsbModule.stop()
+
+        appModule.stopForegroundService()
     }
 
     override fun onDestroyView() {
@@ -334,9 +342,10 @@ class DriveFragment :
 
     override fun onStop() {
         super.onStop()
+        val delayVisibilityInMilliseconds = 1000L
         viewLifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                delay(1000)
+                delay(delayVisibilityInMilliseconds)
                 webView?.dispatchWindowVisibilityChanged(View.VISIBLE)
             }
         }
@@ -352,12 +361,18 @@ class DriveFragment :
          * @return A new instance of fragment GeotabDriveFragment.
          */
         @JvmStatic
-        fun newInstance(modules: ArrayList<Module> = arrayListOf()) =
+        fun newInstance(
+            modules: ArrayList<Module> = arrayListOf(),
+            logger: Logging = Logger.shared
+        ): DriveFragment =
             DriveFragment().apply {
+                this.logger = logger
                 arguments = Bundle().apply {
                     putSerializable(ARG_MODULES, modules)
                 }
             }
+
+        private const val TAG = "DriveFragment"
     }
 
     private fun initializeModules(modules: List<Module>?) {
@@ -365,6 +380,7 @@ class DriveFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
+        logger.info(TAG, "modules initialized")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -378,9 +394,7 @@ class DriveFragment :
             with(webView.settings) {
                 javaScriptEnabled = true
                 domStorageEnabled = true
-                setAppCacheEnabled(true)
                 cacheMode = WebSettings.LOAD_DEFAULT
-                setAppCachePath(webView.context.cacheDir.path)
                 setSupportMultipleWindows(true)
                 mediaPlaybackRequiresUserGesture = false
                 userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
@@ -392,6 +406,7 @@ class DriveFragment :
                 DriveSdkConfig.allowThirdPartyCookies
             )
 
+            logger.info(TAG, "loading webView")
             webView.loadUrl("javascript:document.open();document.close();")
         }
     }
@@ -399,18 +414,27 @@ class DriveFragment :
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
         val url = customUrl
         if (url != null) {
+            logger.info(TAG, "opening custom url")
             setUrlToWebView(url)
         } else {
+            logger.info(TAG, "opening geotab drive url")
             val geotabDriveUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html"
             geotabCredentials?.let {
                 this.webView?.loadUrl("$geotabDriveUrl#ui/login,(server:'${it.path}',credentials:(database:'${(it.credentials.database)}',sessionId:'${(it.credentials.sessionId)}',userName:'${(it.credentials.userName)}'))")
             } ?: run { this.webView?.loadUrl(geotabDriveUrl) }
         }
         webViewClientUserContentController.addScriptOnPageFinished(moduleScripts)
+
+        context?.let {
+            val downloadFiles = DownloadFiles(evaluate, it, this)
+            this.webView?.setDownloadListener(downloadFiles)
+            this.webView?.addJavascriptInterface(downloadFiles, DownloadFiles.interfaceName)
+        }
+
         this.webView?.addJavascriptInterface(this, Module.interfaceName)
         this.webView?.webViewClient = webViewClientUserContentController
         isWebViewConfigured = true
-        this.webView?.webChromeClient = WebViewChromeClient()
+        this.webView?.webChromeClient = WebViewChromeClient(fileChooserHelper = FileChooserHelper(this))
     }
 
     @JavascriptInterface
@@ -451,6 +475,7 @@ class DriveFragment :
     }
 
     override fun onNetworkError() {
+        logger.error(TAG, "network error - web app load failed")
         errorView.let {
             webView?.visibility = View.GONE
             it.visibility = View.VISIBLE
@@ -482,6 +507,7 @@ class DriveFragment :
                     }
                 }
                 is Failure -> {
+                    logger.error(TAG, "module function call failed")
                     this.webView?.post {
                         this.webView?.evaluateJavascript(
                             """
@@ -502,7 +528,7 @@ class DriveFragment :
     }
 
     override fun getAllUsers(callback: (Result<Success<String>, Failure>) -> Unit) {
-        (findModuleFunction("user", "getAll") as? GetAllUsersFunction)?.let {
+        (findModuleFunction(UserModule.MODULE_NAME, "getAll") as? GetAllUsersFunction)?.let {
             functionCall(callback, it)
         }
     }
@@ -511,7 +537,7 @@ class DriveFragment :
         userName: String,
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
-        (findModuleFunction("user", "getViolations") as? GetViolationsFunction)?.let {
+        (findModuleFunction(UserModule.MODULE_NAME, "getViolations") as? GetViolationsFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }
@@ -521,7 +547,7 @@ class DriveFragment :
         userName: String,
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
-        (findModuleFunction("user", "getAvailability") as? GetAvailabilityFunction)?.let {
+        (findModuleFunction(UserModule.MODULE_NAME, "getAvailability") as? GetAvailabilityFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }
@@ -531,7 +557,7 @@ class DriveFragment :
         driverId: String,
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
-        val moduleFunction = findModuleFunction("user", "setDriverSeat") as? SetDriverSeatFunction
+        val moduleFunction = findModuleFunction(UserModule.MODULE_NAME, "setDriverSeat") as? SetDriverSeatFunction
         moduleFunction?.let {
             it.driverId = driverId
             functionCall(callback, it)
@@ -542,20 +568,20 @@ class DriveFragment :
         userName: String,
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
-        (findModuleFunction("user", "getHosRuleSet") as? GetHosRuleSetFunction)?.let {
+        (findModuleFunction(UserModule.MODULE_NAME, "getHosRuleSet") as? GetHosRuleSetFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }
     }
 
     override fun getStateDevice(callback: (Result<Success<String>, Failure>) -> Unit) {
-        (findModuleFunction("state", "device") as? DeviceFunction)?.let {
+        (findModuleFunction(StateModule.MODULE_NAME, "device") as? DeviceFunction)?.let {
             functionCall(callback, it)
         }
     }
 
     override fun setSpeechEngine(speechEngine: SpeechEngine) {
-        val speechModule = modules.firstOrNull { m -> m.name == "speech" } as? SpeechModule
+        val speechModule = modules.firstOrNull { m -> m.name == SpeechModule.MODULE_NAME } as? SpeechModule
         speechModule?.speechEngine = speechEngine
     }
 
@@ -599,10 +625,19 @@ class DriveFragment :
     }
 
     override fun setCustomURLPath(path: String) {
-        val urlString = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$path"
-        this.customUrl = urlString
+        val newPath = path.trim().ifEmpty {
+            "main"
+        }
+
         if (isWebViewConfigured) {
-            setUrlToWebView(urlString)
+            this.webView?.evaluateJavascript(
+                """
+                    window.location.hash="$newPath";
+                """.trimIndent()
+            ) {}
+            this.customUrl = null
+        } else {
+            this.customUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$newPath"
         }
     }
 
@@ -619,6 +654,7 @@ class DriveFragment :
     override fun setSession(credentialResult: CredentialResult, isCoDriver: Boolean) {
         geotabCredentials = credentialResult
         if (!isWebViewConfigured) {
+            logger.error(TAG, "webView not configured")
             return
         }
 
@@ -641,7 +677,9 @@ class DriveFragment :
                 for (i in list.size - 1 downTo 0) {
                     val url = list.getItemAtIndex(i).url
                     val indx = url.indexOf('#')
-                    if (indx != -1 && !url.substring(indx + 1).contains("login", ignoreCase = true)) {
+                    if (indx != -1 && !url.substring(indx + 1)
+                        .contains("login", ignoreCase = true)
+                    ) {
                         webView.goBackOrForward(i - (list.size - 1))
                         return
                     }
@@ -669,7 +707,12 @@ class DriveFragment :
                 }
             }
         } ?: run {
-            callback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
+            logger.error(
+                TAG,
+                "function call failed - no context",
+                Error(GeotabDriveError.NO_CONTEXT)
+            )
+            callback(Failure(Error(GeotabDriveError.NO_CONTEXT)))
         }
     }
 }

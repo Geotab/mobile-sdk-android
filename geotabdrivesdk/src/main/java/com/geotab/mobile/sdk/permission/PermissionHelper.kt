@@ -18,7 +18,7 @@ class PermissionHelper(val context: Context, private val permissionDelegate: Per
             ) == PackageManager.PERMISSION_GRANTED
         }
 
-    private fun requestPermission(permissions: Array<Permission>, callback: (Boolean) -> Unit) {
+    fun requestPermission(permissions: Array<Permission>, callback: (Boolean) -> Unit) {
         permissionDelegate.askPermissionsResult(permissions, callback)
     }
 

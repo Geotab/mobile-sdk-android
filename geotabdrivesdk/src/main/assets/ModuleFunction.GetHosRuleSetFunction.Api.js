@@ -1,17 +1,23 @@
-(async function (callerId) {
-    try {
-        var userName = "{{userName}}";
+(async (callerId) => {
+  try {
+    const userName = '{{userName}}';
 
-        if (userName == null || userName == '') {
-            throw new Error("No users");
-        }
-
-        var api = window.webViewLayer.getApi(userName);
-        var hos = await api.mobile.user.getHosRuleSet();
-
-        window.geotabModules.{{moduleName}}.{{functionName}}({callerId: callerId, result: JSON.stringify(hos)}, (error, res) => {});
-    } catch(err) {
-        window.geotabModules.{{moduleName}}.{{functionName}}({callerId: callerId, error: err.message}, (error, res) => {});
-        throw err;
+    if (userName == null || userName === '') {
+      throw new Error('No users');
     }
-})("{{callerId}}");
+
+    const api = window.webViewLayer.getApi(userName);
+    const hos = await api.mobile.user.getHosRuleSet();
+
+    window.geotabModules.{{moduleName}}.{{functionName}}(
+      { callerId, result: JSON.stringify(hos) },
+      () => {},
+    );
+  } catch (err) {
+    window.geotabModules.{{moduleName}}.{{functionName}}(
+      { callerId, error: err.message },
+      () => {},
+    );
+    throw err;
+  }
+})('{{callerId}}');

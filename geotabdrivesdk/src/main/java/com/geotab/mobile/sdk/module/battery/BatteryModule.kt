@@ -10,9 +10,12 @@ import com.geotab.mobile.sdk.module.Success
 class BatteryModule(
     context: Context,
     private val adapter: BatteryStatusAdapter = BatteryStatusAdapterDefault(context),
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
-    override val name: String = "battery"
-) : Module(name) {
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
+) : Module(MODULE_NAME) {
+
+    companion object {
+        const val MODULE_NAME = "battery"
+    }
 
     var isCharging: Boolean = false
         private set

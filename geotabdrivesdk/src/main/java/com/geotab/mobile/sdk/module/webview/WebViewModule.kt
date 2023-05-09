@@ -6,9 +6,8 @@ import com.geotab.mobile.sdk.module.Module
 
 class WebViewModule(
     activity: FragmentActivity,
-    private val goBack: () -> Unit,
-    override val name: String = "webview"
-) : Module(name) {
+    private val goBack: () -> Unit
+) : Module(MODULE_NAME) {
 
     private val callback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -18,5 +17,9 @@ class WebViewModule(
 
     init {
         activity.onBackPressedDispatcher.addCallback(callback)
+    }
+
+    companion object {
+        const val MODULE_NAME = "webview"
     }
 }

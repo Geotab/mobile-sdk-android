@@ -16,9 +16,8 @@ class MotionActivityModule(
     private val context: Context,
     permissionDelegate: PermissionDelegate,
     private val adapter: MotionActivityAdapterDefault = MotionActivityAdapterDefault(context),
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
-    override val name: String = "motion"
-) : Module(name) {
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
+) : Module(MODULE_NAME) {
     var isPermissionGranted = false
         private set
 
@@ -48,6 +47,7 @@ class MotionActivityModule(
         const val ERROR_ACTIVATING_MOTION_ACTIVITY_PERMISSION =
             "Motion tracking permission not authorized"
         const val ERROR_STOP_MOTION_ACTIVITY = "Error in stopping motion activity."
+        const val MODULE_NAME = "motion"
     }
 
     fun startMonitoringMotionActivity(callback: (Boolean, Boolean) -> Unit) {

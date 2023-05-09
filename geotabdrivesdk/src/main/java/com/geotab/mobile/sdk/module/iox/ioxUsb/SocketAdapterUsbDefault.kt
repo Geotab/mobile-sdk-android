@@ -72,6 +72,8 @@ class SocketAdapterUsbDefault internal constructor(
                 state.inputStream.close()
                 state.outputStream.close()
             }
+            State.Idle -> {}
+            is State.WaitingForConnectivity -> {}
         }
         state = State.Idle
     }
@@ -178,6 +180,9 @@ class SocketAdapterUsbDefault internal constructor(
                     )
                 }
             }
+            State.Idle -> {}
+            is State.Open -> {}
+            is State.WaitingForConnectivity -> {}
         }
     }
 
@@ -186,6 +191,8 @@ class SocketAdapterUsbDefault internal constructor(
             is State.Open, is State.RequestingPermission -> {
                 failConnection(exception, state.autoConnect)
             }
+            State.Idle -> {}
+            is State.WaitingForConnectivity -> {}
         }
     }
 
