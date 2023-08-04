@@ -103,6 +103,8 @@ class DriveFragment :
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
+    private val jsList = HashMap<String, Any>()
+
     private val pushScriptUtil: PushScriptUtil by lazy {
         PushScriptUtil()
     }
@@ -328,6 +330,8 @@ class DriveFragment :
             webView.destroy()
         }
 
+        jsList.clear()
+
         webView = null
 
         ioxUsbModule.stop()
@@ -432,6 +436,10 @@ class DriveFragment :
         }
 
         this.webView?.addJavascriptInterface(this, Module.interfaceName)
+        // js listeners
+        jsList.forEach { name, listener ->
+            this.webView?.addJavascriptInterface(listener, name)
+        }
         this.webView?.webViewClient = webViewClientUserContentController
         isWebViewConfigured = true
         this.webView?.webChromeClient = WebViewChromeClient(fileChooserHelper = FileChooserHelper(this))
@@ -646,6 +654,17 @@ class DriveFragment :
         ioxUsbModule.deviceEventCallback = callback
     }
 
+    @SuppressLint("JavascriptInterface")
+    override fun addJavascriptInterface(listener: Any, name: String) {
+        this.webView?.addJavascriptInterface(listener, name) ?: kotlin.run {
+            this.jsList.put(name, listener)
+        }
+    }
+
+    override fun removeJavascriptInterface(name: String) {
+        this.webView?.removeJavascriptInterface(name)
+    }
+
     private fun setUrlToWebView(urlString: String) {
         this.webView?.loadUrl(urlString)
         this.customUrl = null
@@ -678,7 +697,7 @@ class DriveFragment :
                     val url = list.getItemAtIndex(i).url
                     val indx = url.indexOf('#')
                     if (indx != -1 && !url.substring(indx + 1)
-                        .contains("login", ignoreCase = true)
+                            .contains("login", ignoreCase = true)
                     ) {
                         webView.goBackOrForward(i - (list.size - 1))
                         return
