@@ -135,4 +135,17 @@ interface DriveSdk {
      *  - DeviceEvent is the Json string of the device event object.
      */
     fun getDeviceEvents(callback: (Result<Success<String>, Failure>) -> Unit)
+
+    /**
+     * Add a JavaScript interface on the webView
+     * @param listener the class that wil receive the callbacks
+     * @param name JsInterface name, needs to be aligned with the web implementation
+     */
+    fun addJavascriptInterface(listener: Any, name: String)
+
+    /**
+     * Removes a JavaScript interface for a given name
+     * @param name JsInterface name
+     */
+    fun removeJavascriptInterface(name: String)
 }
