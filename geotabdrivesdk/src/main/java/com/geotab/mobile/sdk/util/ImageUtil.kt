@@ -31,7 +31,10 @@ class ImageUtil(val context: Context) {
     /**
      * Maintain the aspect ratio so the resulting image does not look smooshed
      */
-    private fun calculateAspectRatio(options: BitmapFactory.Options, reqSize: Size): Pair<Float, Float> {
+    private fun calculateAspectRatio(
+        options: BitmapFactory.Options,
+        reqSize: Size
+    ): Pair<Float, Float> {
         val (orgHeight: Int, orgWidth: Int) = options.run { outHeight to outWidth }
         var newWidth = reqSize.width.toFloat()
         var newHeight = reqSize.height.toFloat()
@@ -49,7 +52,10 @@ class ImageUtil(val context: Context) {
      * Figure out what ratio we can load our image into memory at while still being bigger than
      * our desired width and height
      */
-    private fun calculateSampleSize(options: BitmapFactory.Options, reqSize: Pair<Float, Float>): Float {
+    private fun calculateSampleSize(
+        options: BitmapFactory.Options,
+        reqSize: Pair<Float, Float>
+    ): Float {
         val (reqWidth: Float, reqHeight: Float) = reqSize
         // Raw height and width of image
         val (height: Int, width: Int) = options.run { outHeight to outWidth }
@@ -83,6 +89,7 @@ class ImageUtil(val context: Context) {
         }
         return bitmap
     }
+
     /**
      * Return bitmap options for the given image
      * @param srcUri Uri
@@ -186,7 +193,12 @@ class ImageUtil(val context: Context) {
         val fName: String = fileName?.let {
             "${rootUri.path}/" + it + CameraModule.ENCODING_TYPE_EXT
         }
-            ?: "${rootUri.path}/" + SimpleDateFormat(CameraModule.FILENAME_FORMAT, Locale.US).format(Date()) + CameraModule.ENCODING_TYPE_EXT
+            ?: (
+                "${rootUri.path}/" + SimpleDateFormat(
+                    CameraModule.FILENAME_FORMAT,
+                    Locale.US
+                ).format(Date()) + CameraModule.ENCODING_TYPE_EXT
+                )
 
         return File(fName)
     }
@@ -214,7 +226,10 @@ class ImageUtil(val context: Context) {
             context.contentResolver.openInputStream(source).use { inputStream ->
                 inputStream?.let {
                     val exif = ExifInterface(it)
-                    exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                    exif.getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL
+                    )
                 } ?: ExifInterface.ORIENTATION_NORMAL
             }
         } catch (e: IOException) {

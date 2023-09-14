@@ -20,7 +20,8 @@ typealias LastServerUpdatedCallbackType = (serverAddr: String) -> Unit
 
 class AppModule(
     private val evaluate: (String, (String) -> Unit) -> Unit,
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit
+    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit,
+    moveAppToBackground: () -> Unit
 ) : Module(MODULE_NAME) {
     private lateinit var adapter: BackgroundModeAdapter
     private lateinit var context: Context
@@ -30,11 +31,13 @@ class AppModule(
     private var foreGroundService: ForeGroundService? = null
 
     var lastServerUpdatedCallback: LastServerUpdatedCallbackType = {}
+    var driveReadyCallback: () -> Unit = {}
     var keepAlive = "{}"
 
     init {
         functions.add(UpdateLastServerFunction(module = this))
         functions.add(ClearWebViewCacheFunction(module = this))
+        functions.add(MoveAppToBackgroundFunction(moveAppToBackground = moveAppToBackground, module = this))
         InternalAppLogging.setListener(AppLogEventSource(push))
     }
 

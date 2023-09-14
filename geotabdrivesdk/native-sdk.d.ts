@@ -252,6 +252,13 @@ declare namespace geotabModules {
          *  result: undefined. Any other errors will be responded in the err argument of the callback.
          */
         function clearWebViewCache(argument: undefined, callback: (err?: Error, result?: undefined) => void);
+
+        /*******
+         * Move app to the background.
+         * @param callback
+         *  result: undefined. Any other errors will be responded in the err argument of the callback.
+         */
+        function moveAppToBackground(argument: undefined, callback: (err?: Error, result?: undefined) => void);
     }
 
     namespace browser {

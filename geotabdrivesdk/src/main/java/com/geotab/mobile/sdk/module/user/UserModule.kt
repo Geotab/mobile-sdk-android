@@ -22,6 +22,7 @@ class UserModule : Module(MODULE_NAME) {
         functions.add(DriverActionNecessaryFunction(module = this))
         functions.add(PageNavigationFunction(module = this))
         functions.add(LoginRequiredFunction(module = this))
+        functions.add(GetOpenCabAvailabilityFunction(module = this))
     }
 
     companion object {

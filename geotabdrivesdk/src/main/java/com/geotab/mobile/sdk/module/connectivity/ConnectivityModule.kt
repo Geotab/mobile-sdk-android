@@ -69,13 +69,13 @@ class ConnectivityModule(
         return false
     }
 
-    private fun updateConnectionInfo(online: Boolean) {
+    internal fun updateConnectionInfo(online: Boolean) {
         updateState(online)
         signalConnectivityEvent(online)
     }
 
     private fun updateState(online: Boolean) {
-        var script =
+        val script =
             """
                 if (window.$geotabModules != null && window.$geotabModules.$name != null) { 
                     window.$geotabModules.$name.state = ${stateJson(online)}

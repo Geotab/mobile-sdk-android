@@ -59,6 +59,7 @@ import com.geotab.mobile.sdk.module.user.DriverActionNecessaryCallbackType
 import com.geotab.mobile.sdk.module.user.GetAllUsersFunction
 import com.geotab.mobile.sdk.module.user.GetAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetHosRuleSetFunction
+import com.geotab.mobile.sdk.module.user.GetOpenCabAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetViolationsFunction
 import com.geotab.mobile.sdk.module.user.LoginRequiredCallbackType
 import com.geotab.mobile.sdk.module.user.PageNavigationCallbackType
@@ -107,7 +108,7 @@ class DriveFragment :
         PushScriptUtil()
     }
 
-    private val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit =
+    val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit =
         { moduleEvent, callBack ->
             val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
 
@@ -184,7 +185,7 @@ class DriveFragment :
     }
 
     private val appModule: AppModule by lazy {
-        AppModule(evaluate = evaluate, push = push)
+        AppModule(evaluate = evaluate, push = push, moveAppToBackground = ::moveAppToBackground)
     }
     private val deviceModule: DeviceModule by lazy {
         DeviceModule(requireContext(), preference, userAgentUtil)
@@ -303,6 +304,7 @@ class DriveFragment :
         with(appModule) {
             initValues(this@DriveFragment.requireContext())
             startForegroundService()
+            driveReadyCallback()
         }
         ioxUsbModule.start()
     }
@@ -553,6 +555,14 @@ class DriveFragment :
         }
     }
 
+    override fun getOpenCabAvailability(
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
+        (findModuleFunction(UserModule.MODULE_NAME, "getOpenCabAvailability") as? GetOpenCabAvailabilityFunction)?.let {
+            functionCall(callback, it)
+        }
+    }
+
     override fun setDriverSeat(
         driverId: String,
         callback: (Result<Success<String>, Failure>) -> Unit
@@ -587,6 +597,10 @@ class DriveFragment :
 
     override fun setDriverActionNecessaryCallback(callback: DriverActionNecessaryCallbackType) {
         userModule.driverActionNecessaryCallback = callback
+    }
+
+    override fun setDriveReadyListener(callback: () -> Unit) {
+        appModule.driveReadyCallback = callback
     }
 
     override fun clearDriverActionNecessaryCallback() {
@@ -714,5 +728,8 @@ class DriveFragment :
             )
             callback(Failure(Error(GeotabDriveError.NO_CONTEXT)))
         }
+    }
+    private fun moveAppToBackground() {
+        requireActivity().moveTaskToBack(true)
     }
 }
