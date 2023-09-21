@@ -32,7 +32,7 @@ class AppModule(
 
     var lastServerUpdatedCallback: LastServerUpdatedCallbackType = {}
     var driveReadyCallback: () -> Unit = {}
-    var keepAlive = "{}"
+    private var keepAlive = "{}"
 
     init {
         functions.add(UpdateLastServerFunction(module = this))
