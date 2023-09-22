@@ -12,7 +12,7 @@ android {
     defaultConfig {
         minSdkVersion 24
         targetSdkVersion 33
-        versionCode 67230
+        versionCode 67251
         versionName "6.4.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -147,26 +147,13 @@ publishing {
                 password = properties.getProperty("gpr.key") ?: System.getenv("GPR_TOKEN")
             }
         }
-
-        maven {
-            name = "GitLab"
-            url = uri("https://git.geotab.com/api/v4/projects/1224/packages/maven")
-            credentials(HttpHeaderCredentials) {
-                name= properties.getProperty("gitlab.token.scope") ?: System.getenv("GITLAB_TOKEN_SCOPE") // the token scope is stored in ~/local.properties
-                value = properties.getProperty("gitlab.publish.token") ?: System.getenv("GITLAB_PUBLISH_TOKEN") // the token is stored in ~/local.properties
-
-            }
-            authentication {
-                header(HttpHeaderAuthentication)
-            }
-        }
     }
 
     publications {
         aar(MavenPublication) {
             groupId 'com.geotab.mobile.sdk'
             artifactId 'mobile-sdk-android'
-            version android.defaultConfig.versionName +"(" + android.defaultConfig.versionCode +")"
+            version android.defaultConfig.versionName + "_" + android.defaultConfig.versionCode
 
             artifact "$buildDir/outputs/aar/geotabdrivesdk-release.aar"
 
@@ -180,7 +167,6 @@ publishing {
                             dependency.appendNode('artifactId', it.name)
                             dependency.appendNode('version', it.version)
                         }
-
             }
         }
     }
