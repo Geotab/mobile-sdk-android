@@ -93,16 +93,20 @@ class BrowserFragment : Fragment() {
         return browserBinding.root
     }
 
-    private fun closeFragment() {
-        parentFragmentManager.popBackStack()
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         configureWebView()
         configureWebViewScript()
 
         setupToolBar()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (isCallbackCompleted) {
+            closeFragment()
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -212,5 +216,11 @@ class BrowserFragment : Fragment() {
 
     private fun onError(error: String) {
         samlCallback?.invoke(Failure(Error(GeotabDriveError.MODULE_SAML_ERROR, error)))
+    }
+
+    private fun closeFragment() {
+        if (!parentFragmentManager.isStateSaved) {
+            parentFragmentManager.popBackStack()
+        }
     }
 }
