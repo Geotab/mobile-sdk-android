@@ -8,12 +8,12 @@
     const users = await api.mobile.user.get({{getAllUsers}});
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, result: JSON.stringify(users) },
-      () => {},
+      () => {}
     );
   } catch (err) {
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, error: err.message },
-      () => {},
+      () => {}
     );
     throw err;
   }

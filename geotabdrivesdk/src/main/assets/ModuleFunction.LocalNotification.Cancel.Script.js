@@ -10,7 +10,7 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (id, callback) => {
       } catch (err) {
         console.log(
           '>>>>> User provided callback throws uncaught exception: ',
-          err.message,
+          err.message
         );
       }
       return;
@@ -26,7 +26,7 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (id, callback) => {
     } catch (err) {
       console.log(
         '>>>>> User provided callback throws uncaught exception: ',
-        err.message,
+        err.message
       );
     }
     delete window.{{geotabNativeCallbacks}}[nativeCallback];
@@ -36,6 +36,6 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (id, callback) => {
     '{{moduleName}}',
     '{{functionName}}',
     JSON.stringify({ result: id }),
-    `{{geotabNativeCallbacks}}.${nativeCallback}`,
+    `{{geotabNativeCallbacks}}.${nativeCallback}`
   );
 };

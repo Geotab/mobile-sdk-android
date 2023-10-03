@@ -5,7 +5,7 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (params, callback) =>
   const options = {
     path: params.path,
     data: [].slice.call(new Uint8Array(params.data)),
-    offset: params.offset,
+    offset: params.offset
   };
   const nativeCallback = `{{callbackPrefix}}${Math.random().toString(36).substring(2)}`;
   window.{{geotabNativeCallbacks}}[nativeCallback] = async (error, response) => {
@@ -14,7 +14,7 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (params, callback) =>
     } catch (err) {
       console.log(
         '>>>>> User provided callback throws uncaught exception: ',
-        err.message,
+        err.message
       );
     }
     delete window.{{geotabNativeCallbacks}}[nativeCallback];
@@ -24,6 +24,6 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (params, callback) =>
     '{{moduleName}}',
     '{{functionName}}',
     JSON.stringify({ result: options }),
-    `{{geotabNativeCallbacks}}.${nativeCallback}`,
+    `{{geotabNativeCallbacks}}.${nativeCallback}`
   );
 };

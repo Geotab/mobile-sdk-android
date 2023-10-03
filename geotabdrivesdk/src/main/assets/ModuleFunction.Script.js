@@ -6,7 +6,7 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (params, callback) =>
     } catch (err) {
       console.log(
         '>>>>> User provided callback throws uncaught exception: ',
-        err.message,
+        err.message
       );
     }
     delete window.{{geotabNativeCallbacks}}[nativeCallback];
@@ -16,6 +16,6 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (params, callback) =>
     '{{moduleName}}',
     '{{functionName}}',
     JSON.stringify({ result: params }),
-    `{{geotabNativeCallbacks}}.${nativeCallback}`,
+    `{{geotabNativeCallbacks}}.${nativeCallback}`
   );
 };

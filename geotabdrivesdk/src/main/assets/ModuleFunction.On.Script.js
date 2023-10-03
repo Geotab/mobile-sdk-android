@@ -25,7 +25,7 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (eventName, callback)
       mod.onListeners[responseEventName].forEach(async (cb) => {
         try {
           await cb(response.notification, response.event);
-        } catch {
+        } catch (err) {
           // continue
         }
       });
@@ -36,6 +36,6 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (eventName, callback)
     '{{moduleName}}',
     '{{functionName}}',
     JSON.stringify({ result: Object.keys(mod.onListeners) }),
-    'window.{{geotabModules}}.{{moduleName}}.___onCallback',
+    'window.{{geotabModules}}.{{moduleName}}.___onCallback'
   );
 };

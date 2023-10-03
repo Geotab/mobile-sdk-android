@@ -26,5 +26,10 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (eventName, callback)
     mod.___offCallback = () => {};
   }
   // eslint-disable-next-line no-undef
-  {{interfaceName}}.postMessage('{{moduleName}}', '{{functionName}}', JSON.stringify({ result: Object.keys(mod.onListeners) }), 'window.{{geotabModules}}.{{moduleName}}.___offCallback');
+  {{interfaceName}}.postMessage(
+    '{{moduleName}}',
+    '{{functionName}}',
+    JSON.stringify({ result: Object.keys(mod.onListeners) }),
+    'window.{{geotabModules}}.{{moduleName}}.___offCallback'
+  );
 };

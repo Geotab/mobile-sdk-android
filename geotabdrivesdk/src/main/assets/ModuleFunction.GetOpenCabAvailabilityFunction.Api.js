@@ -9,12 +9,12 @@
     const availability = getHosTeamClocksFunction();
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, result: JSON.stringify(availability) },
-      () => {},
+      () => {}
     );
   } catch (err) {
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, error: err.message },
-      () => {},
+      () => {}
     );
     throw err;
   }

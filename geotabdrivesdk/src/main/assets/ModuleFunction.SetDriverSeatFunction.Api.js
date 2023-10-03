@@ -12,12 +12,12 @@
     }
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, result: JSON.stringify(user) },
-      () => {},
+      () => {}
     );
   } catch (err) {
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, error: err.message },
-      () => {},
+      () => {}
     );
     throw err;
   }

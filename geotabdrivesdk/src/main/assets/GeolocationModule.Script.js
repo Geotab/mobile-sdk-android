@@ -42,7 +42,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         } else if (
@@ -54,7 +54,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         } else {
@@ -63,7 +63,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         }
@@ -72,7 +72,7 @@
       const req = {
         success,
         error,
-        options,
+        options
       };
       if (options != null && options.timeout != null && options.timeout > 0) {
         req.timerId = setTimeout(async () => {
@@ -88,7 +88,7 @@
             } catch (caughtErr) {
               console.log(
                 '>>>>> User provided function throws uncaught exception: ',
-                caughtErr.message,
+                caughtErr.message
               );
             }
           }
@@ -109,7 +109,7 @@
       success,
       error,
       options,
-      lastCode: null,
+      lastCode: null
     };
     req.timeoutFun = async () => {
       req.timerId = setTimeout(req.timeoutFun, options.timeout);
@@ -120,7 +120,7 @@
         } catch (caughtErr) {
           console.log(
             '>>>>> User provided function throws uncaught exception: ',
-            caughtErr.message,
+            caughtErr.message
           );
         }
       }
@@ -143,7 +143,7 @@
             } catch (caughtErr) {
               console.log(
                 '>>>>> User provided function throws uncaught exception: ',
-                caughtErr.message,
+                caughtErr.message
               );
             }
           }
@@ -158,7 +158,7 @@
             } catch (caughtErr) {
               console.log(
                 '>>>>> User provided function throws uncaught exception: ',
-                caughtErr.message,
+                caughtErr.message
               );
             }
           }
@@ -170,7 +170,7 @@
             } catch (caughtErr) {
               console.log(
                 '>>>>> User provided function throws uncaught exception: ',
-                caughtErr.message,
+                caughtErr.message
               );
             }
           }
@@ -224,7 +224,7 @@
         } catch (caughtErr) {
           console.log(
             '>>>>> User provided function throws uncaught exception: ',
-            caughtErr.message,
+            caughtErr.message
           );
         }
       } else if (error && error.includes('POSITION_UNAVAILABLE')) {
@@ -233,7 +233,7 @@
         } catch (caughtErr) {
           console.log(
             '>>>>> User provided function throws uncaught exception: ',
-            caughtErr.message,
+            caughtErr.message
           );
         }
       } else if (error && error.includes('TIMEOUT')) {
@@ -242,7 +242,7 @@
         } catch (caughtErr) {
           console.log(
             '>>>>> User provided function throws uncaught exception: ',
-            caughtErr.message,
+            caughtErr.message
           );
         }
       } else {
@@ -251,7 +251,7 @@
         } catch (caughtErr) {
           console.log(
             '>>>>> User provided function throws uncaught exception: ',
-            caughtErr.message,
+            caughtErr.message
           );
         }
       }
@@ -277,7 +277,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         }
@@ -289,7 +289,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         }
@@ -301,7 +301,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         }
@@ -313,7 +313,7 @@
           } catch (caughtErr) {
             console.log(
               '>>>>> User provided function throws uncaught exception: ',
-              caughtErr.message,
+              caughtErr.message
             );
           }
         }
@@ -335,7 +335,7 @@
       } catch (caughtErr) {
         console.log(
           '>>>>> User provided function throws uncaught exception: ',
-          caughtErr.message,
+          caughtErr.message
         );
       }
     }
@@ -354,7 +354,7 @@
       } catch (caughtErr) {
         console.log(
           '>>>>> User provided function throws uncaught exception: ',
-          caughtErr.message,
+          caughtErr.message
         );
       }
       req.lastCode = null;
