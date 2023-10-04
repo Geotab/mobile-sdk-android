@@ -3,7 +3,7 @@
     const getHosTeamClocksFunction = window?.webViewLayer?.getOpenCabService()?.getHosTeamClocks;
 
     if (!getHosTeamClocksFunction) {
-        throw new Error('Loading...');
+      throw new Error('Loading...');
     }
 
     const availability = getHosTeamClocksFunction();
