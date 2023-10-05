@@ -12,8 +12,8 @@ android {
     defaultConfig {
         minSdkVersion 24
         targetSdkVersion 33
-        versionCode 67446
-        versionName "6.4.0"
+        versionCode 67469
+        versionName "6.4.0_67469"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -153,7 +153,7 @@ publishing {
         aar(MavenPublication) {
             groupId 'com.geotab.mobile.sdk'
             artifactId 'mobile-sdk-android'
-            version android.defaultConfig.versionName + "_" + android.defaultConfig.versionCode
+            version android.defaultConfig.versionName
 
             artifact "$buildDir/outputs/aar/geotabdrivesdk-release.aar"
 
