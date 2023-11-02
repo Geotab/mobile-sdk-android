@@ -12,6 +12,7 @@ import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -140,6 +141,12 @@ class DriveFragment :
         }
     }
 
+    private val onBackPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            moveAppToBackground()
+        }
+    }
+
     private val cookieManager: CookieManager by lazy {
         CookieManager.getInstance()
     }
@@ -209,6 +216,10 @@ class DriveFragment :
         IoxBleModule(requireContext(), permissionDelegate = this, push = push, evaluate = evaluate)
     }
 
+    private val webViewModule: WebViewModule? by lazy {
+        activity?.let { WebViewModule(it, goBack) }
+    }
+
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
             deviceModule,
@@ -217,7 +228,7 @@ class DriveFragment :
             StateModule(),
             speechModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
-            activity?.let { WebViewModule(it, goBack) },
+            webViewModule,
             context?.let { LocalNotificationModule(it, this) },
             batteryModule,
             appearanceModule,
@@ -268,6 +279,9 @@ class DriveFragment :
         arguments?.let { bundle ->
             initializeModules((bundle.getSerializable(ARG_MODULES) as? ArrayList<*>)?.filterIsInstance<Module>())
         }
+        activity?.let { it.onBackPressedDispatcher.addCallback(onBackPressedCallback) }
+        contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
+        contentController.setAppCallBack(onBackPressedCallback)
     }
 
     override fun onCreateView(

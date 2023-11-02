@@ -7,12 +7,15 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
 import com.geotab.mobile.sdk.models.interfaces.WebViewClientController
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 
 class WebViewClientUserContentController(private val networkErrorDelegate: NetworkErrorDelegate) :
     WebViewClientController, WebViewClient() {
     private var moduleScripts = ""
+    private var appOnBackPressedCallback: OnBackPressedCallback? = null
+    private var webViewOnBackPressedCallback: OnBackPressedCallback? = null
 
     override fun onReceivedError(
         view: WebView?,
@@ -41,6 +44,15 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
     override fun onPageFinished(view: WebView?, url: String?) {
         view?.let { webView ->
             webView.evaluateJavascript(moduleScripts) {}
+            webViewOnBackPressedCallback?.isEnabled = webView.canGoBack()
+            appOnBackPressedCallback?.isEnabled = !webView.canGoBack()
         }
+    }
+
+    fun setWebViewCallBack(onBackPressedCallBack: OnBackPressedCallback?) {
+        webViewOnBackPressedCallback = onBackPressedCallBack
+    }
+    fun setAppCallBack(onBackPressedCallBack: OnBackPressedCallback?) {
+        appOnBackPressedCallback = onBackPressedCallBack
     }
 }

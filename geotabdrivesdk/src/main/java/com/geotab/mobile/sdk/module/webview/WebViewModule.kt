@@ -9,14 +9,14 @@ class WebViewModule(
     private val goBack: () -> Unit
 ) : Module(MODULE_NAME) {
 
-    private val callback = object : OnBackPressedCallback(true) {
+    val onBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
             goBack()
         }
     }
 
     init {
-        activity.onBackPressedDispatcher.addCallback(callback)
+        activity.onBackPressedDispatcher.addCallback(onBackPressedCallback)
     }
 
     companion object {
