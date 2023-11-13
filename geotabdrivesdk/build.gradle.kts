@@ -1,5 +1,7 @@
 import java.util.Properties
 
+val versionName = "6.4.0_67919"
+
 plugins {
     id("com.android.library")
     kotlin("android")
@@ -16,7 +18,6 @@ android {
 
     defaultConfig {
         minSdk = 24
-        val versionName = "6.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -128,6 +129,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.1.0")
     androidTestImplementation("androidx.test.espresso:espresso-web:3.4.0")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.2.0")
 }
 repositories {
     mavenCentral()
@@ -135,9 +137,7 @@ repositories {
 }
 
 publishing {
-
     repositories {
-
         val localProperties : File = project.file("local.properties")
         val properties = Properties()
         if (localProperties.exists()) {
@@ -159,20 +159,20 @@ publishing {
         create<MavenPublication>("aar") {
             groupId = "com.geotab.mobile.sdk"
             artifactId = "mobile-sdk-android"
-            version = android.defaultConfig.versionName + "_" + android.defaultConfig.versionCode
+            version = versionName
 
             artifact("$buildDir/outputs/aar/geotabdrivesdk-release.aar")
 
             pom.withXml {
-                val dependencies = asNode().appendNode("dependencies")
+                val dependenciesNode = asNode().appendNode("dependencies")
+
                 configurations.getByName("releaseCompileClasspath").allDependencies
                     .filterIsInstance<ExternalDependency>()
                     .forEach { dependency ->
-                        dependencies.appendNode("dependency").apply {
-                            appendNode("groupId", dependency.group)
-                            appendNode("artifactId", dependency.name)
-                            appendNode("version", dependency.version)
-                        }
+                        val dependencyNode = dependenciesNode.appendNode("dependency")
+                        dependencyNode.appendNode("groupId", dependency.group)
+                        dependencyNode.appendNode("artifactId", dependency.name)
+                        dependencyNode.appendNode("version", dependency.version)
                     }
             }
         }
