@@ -12,8 +12,8 @@ android {
     defaultConfig {
         minSdkVersion 24
         targetSdkVersion 33
-        versionCode 67901
-        versionName "6.4.0_67901"
+        versionCode 67991
+        versionName "6.4.1_67991"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -123,7 +123,6 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
     androidTestImplementation('androidx.test.espresso:espresso-web:3.4.0')
-    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
 }
 repositories {
     mavenCentral()
