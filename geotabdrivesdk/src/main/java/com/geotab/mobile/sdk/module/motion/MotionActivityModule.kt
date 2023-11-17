@@ -1,7 +1,6 @@
 package com.geotab.mobile.sdk.module.motion
 
 import android.content.Context
-import android.widget.Toast
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.models.enums.MotionEnum
 import com.geotab.mobile.sdk.module.Failure
@@ -57,12 +56,6 @@ class MotionActivityModule(
                     permissionGrantedAndStartMonitoring(callback)
                 } else {
                     isPermissionGranted = false
-                    Toast.makeText(
-                        context,
-                        ERROR_ACTIVATING_MOTION_ACTIVITY_PERMISSION,
-                        Toast.LENGTH_LONG
-                    ).show()
-
                     // First false means the user did not grant permission. Second false
                     // means the service was not started
                     callback(false, false)

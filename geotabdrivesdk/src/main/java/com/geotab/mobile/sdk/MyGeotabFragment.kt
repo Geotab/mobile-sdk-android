@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
@@ -81,6 +82,12 @@ class MyGeotabFragment :
         }
     }
 
+    private val onBackPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            moveAppToBackground()
+        }
+    }
+
     private val userAgentUtil: UserAgentUtil by lazy {
         UserAgentUtil(requireContext())
     }
@@ -96,11 +103,15 @@ class MyGeotabFragment :
         DeviceModule(requireContext(), preference, userAgentUtil)
     }
 
+    private val webViewModule: WebViewModule? by lazy {
+        activity?.let { WebViewModule(it, goBack) }
+    }
+
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
             deviceModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
-            activity?.let { WebViewModule(it, goBack) },
+            webViewModule,
             context?.let { SSOModule(this.parentFragmentManager) }
         )
     }
@@ -180,6 +191,9 @@ class MyGeotabFragment :
         arguments?.let { bundle ->
             initializeModules((bundle.getSerializable(ARG_MODULES) as? ArrayList<*>)?.filterIsInstance<Module>())
         }
+        activity?.let { it.onBackPressedDispatcher.addCallback(onBackPressedCallback) }
+        contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
+        contentController.setAppCallBack(onBackPressedCallback)
     }
 
     override fun onAttach(context: Context) {
@@ -375,5 +389,9 @@ class MyGeotabFragment :
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun moveAppToBackground() {
+        requireActivity().moveTaskToBack(true)
     }
 }
