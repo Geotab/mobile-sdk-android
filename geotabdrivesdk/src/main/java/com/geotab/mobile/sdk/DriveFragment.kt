@@ -46,6 +46,7 @@ import com.geotab.mobile.sdk.module.geolocation.GeolocationModule
 import com.geotab.mobile.sdk.module.iox.ioxBle.IoxBleModule
 import com.geotab.mobile.sdk.module.iox.ioxUsb.IoxUsbModule
 import com.geotab.mobile.sdk.module.localNotification.LocalNotificationModule
+import com.geotab.mobile.sdk.module.localStorage.LocalStorageModule
 import com.geotab.mobile.sdk.module.motion.MotionActivityModule
 import com.geotab.mobile.sdk.module.photoLibrary.PhotoLibraryDelegate
 import com.geotab.mobile.sdk.module.photoLibrary.PhotoLibraryModule
@@ -220,6 +221,9 @@ class DriveFragment :
         activity?.let { WebViewModule(it, goBack) }
     }
 
+    private val localStorageModule: LocalStorageModule by lazy {
+        LocalStorageModule(requireContext())
+    }
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
             deviceModule,
@@ -241,7 +245,8 @@ class DriveFragment :
             ioxUsbModule,
             geolocationModule,
             ioxbleModule,
-            context?.let { SSOModule(this.parentFragmentManager) }
+            context?.let { SSOModule(this.parentFragmentManager) },
+            localStorageModule
         )
     }
 

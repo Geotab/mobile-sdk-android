@@ -1,12 +1,13 @@
 import java.util.Properties
 
-val versionName = "6.4.1_67999"
+val versionName = "6.4.1_68039"
 
 plugins {
     id("com.android.library")
     kotlin("android")
     id("org.jetbrains.dokka") version "1.8.10"
     id("maven-publish")
+    id("com.google.devtools.ksp") version "1.7.20-1.0.8"
 }
 
 apply {
@@ -21,6 +22,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        buildConfigField("String", "KEYSTORE_ALIAS", "\"" +  System.getenv("KEYSTORE_ALIAS") + "\"")
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
     }
 
@@ -33,6 +35,7 @@ android {
                     properties.load(input) }
             }
 
+            buildConfigField("String", "KEYSTORE_ALIAS", "\"" + properties.getProperty("keystore.alias", System.getenv("KEYSTORE_ALIAS")) + "\"")
             buildConfigField("String", "INTEGRATION_TEST_USER1", "\"" + properties.getProperty("integration.test.user1", System.getenv("INTEGRATION_TEST_USER1")) + "\"")
             buildConfigField("String", "INTEGRATION_TEST_USER1_PWD", "\"" + properties.getProperty("integration.test.user1.pwd", System.getenv("INTEGRATION_TEST_USER1_PWD")) + "\"")
             buildConfigField("String", "INTEGRATION_TEST_USER1_ID", "\"" + properties.getProperty("integration.test.user1.id", System.getenv("INTEGRATION_TEST_USER1_ID")) + "\"")
@@ -119,6 +122,10 @@ dependencies {
     debugImplementation("androidx.fragment:fragment-testing:1.4.0-alpha07")
     implementation("com.google.android.gms:play-services-location:17.1.0")
     implementation("com.google.code.gson:gson:2.9.0")
+    implementation ("androidx.room:room-runtime:2.5.2")
+    implementation("androidx.room:room-ktx:2.5.2")
+    annotationProcessor("androidx.room:room-compiler:2.5.2")
+    ksp("androidx.room:room-compiler:2.5.2")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.7.0")
     testImplementation("io.mockk:mockk:1.13.3")
