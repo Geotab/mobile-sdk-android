@@ -18,6 +18,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
 import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
+import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.logging.Logging
 import com.geotab.mobile.sdk.models.ModuleEvent
@@ -173,6 +174,11 @@ class DriveFragment :
     }
     private val startForPermissionResult = registerForActivityResult(PermissionResultContract()) {
         it.callback(it.result)
+
+        if (it.wasPermissionAttributeNull) {
+            Logger.shared.debug(TAG, it.permissions.toString())
+            InternalAppLogging.appLogger?.info(TAG, "Permissions being asked: ${it.permissions}")
+        }
     }
     private val takePicture = registerForActivityResult(TakePictureContract()) {
         it.callback(it.result)

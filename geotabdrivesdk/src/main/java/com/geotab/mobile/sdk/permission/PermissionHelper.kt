@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 class PermissionHelper(val context: Context, private val permissionDelegate: PermissionDelegate) {
     companion object {
         const val PERMISSION_RESPONSE = "PERMISSION_RESPONSE"
+        const val PERMISSIONS_ASKED = "PERMISSIONS_ASKED"
         const val PERMISSION_GRANTED = "PERMISSION_GRANTED"
         const val PERMISSION_DENIED = "PERMISSION_DENIED"
     }

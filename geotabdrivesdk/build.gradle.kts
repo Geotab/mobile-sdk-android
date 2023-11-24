@@ -1,12 +1,13 @@
 import java.util.Properties
 
-val versionName = "6.4.1_68039"
+val versionName = "6.4.1_68057"
 
 plugins {
     id("com.android.library")
     kotlin("android")
     id("org.jetbrains.dokka") version "1.8.10"
     id("maven-publish")
+    id("kotlin-parcelize")
     id("com.google.devtools.ksp") version "1.7.20-1.0.8"
 }
 

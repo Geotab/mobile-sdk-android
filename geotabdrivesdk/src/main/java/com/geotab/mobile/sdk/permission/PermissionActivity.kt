@@ -6,9 +6,11 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSIONS_ASKED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_DENIED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_GRANTED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_RESPONSE
+import com.geotab.mobile.sdk.util.parcelableArrayList
 
 class PermissionActivity : AppCompatActivity() {
     private var permissions: ArrayList<Permission> = arrayListOf()
@@ -22,19 +24,24 @@ class PermissionActivity : AppCompatActivity() {
 
     private val askPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { map ->
         val resIntent = Intent()
+
         if (!map.containsValue(false)) {
             resIntent.putExtra(PERMISSION_RESPONSE, PERMISSION_GRANTED)
-            setResult(Activity.RESULT_OK, resIntent)
         } else {
             resIntent.putExtra(PERMISSION_RESPONSE, PERMISSION_DENIED)
-            setResult(Activity.RESULT_OK, resIntent)
         }
+
+        resIntent.putParcelableArrayListExtra(PERMISSIONS_ASKED, permissions)
+
+        setResult(Activity.RESULT_OK, resIntent)
         this.finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val permissionList = (intent.getSerializableExtra(PERMISSION_EXTRA) as? ArrayList<*>)?.filterIsInstance<Permission>()
+
+        val permissionList = intent.extras?.parcelableArrayList<Permission>(PERMISSION_EXTRA)
+
         permissionList?.let {
             this.permissions = ArrayList(permissionList)
         }
