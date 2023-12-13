@@ -2,17 +2,25 @@ package com.geotab.mobile.sdk
 
 import android.annotation.SuppressLint
 import android.net.http.SslError
+import android.os.Build
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
+import androidx.annotation.RequiresApi
+import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.interfaces.WebViewClientController
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 
 class WebViewClientUserContentController(private val networkErrorDelegate: NetworkErrorDelegate) :
     WebViewClientController, WebViewClient() {
+    companion object {
+        const val TAG = "WebViewClientUserContentController"
+    }
+
     private var moduleScripts = ""
     private var appOnBackPressedCallback: OnBackPressedCallback? = null
     private var webViewOnBackPressedCallback: OnBackPressedCallback? = null
@@ -26,6 +34,23 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
             networkErrorDelegate.onNetworkError()
         }
         super.onReceivedError(view, request, error)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+        detail?.let {
+            val crashMessage =
+                if (it.didCrash()) {
+                    "Webview rendering process crashed"
+                } else {
+                    "System killed the WebView rendering process to reclaim memory."
+                }
+            InternalAppLogging.appLogger?.error(
+                TAG,
+                crashMessage
+            )
+        }
+        return super.onRenderProcessGone(view, detail)
     }
 
     @SuppressLint("WebViewClientOnReceivedSslError")
@@ -52,6 +77,7 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
     fun setWebViewCallBack(onBackPressedCallBack: OnBackPressedCallback?) {
         webViewOnBackPressedCallback = onBackPressedCallBack
     }
+
     fun setAppCallBack(onBackPressedCallBack: OnBackPressedCallback?) {
         appOnBackPressedCallback = onBackPressedCallBack
     }

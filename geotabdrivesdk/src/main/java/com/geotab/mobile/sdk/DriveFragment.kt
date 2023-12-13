@@ -31,6 +31,7 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.app.AppLogEventSource
 import com.geotab.mobile.sdk.module.app.AppModule
 import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.appearance.AppearanceModule
@@ -177,7 +178,7 @@ class DriveFragment :
 
         if (it.wasPermissionAttributeNull) {
             Logger.shared.debug(TAG, it.permissions.toString())
-            InternalAppLogging.appLogger?.info(TAG, "Permissions being asked: ${it.permissions}")
+            InternalAppLogging.appLogger?.error(TAG, "Permissions being asked: ${it.permissions}")
         }
     }
     private val takePicture = registerForActivityResult(TakePictureContract()) {
@@ -328,6 +329,7 @@ class DriveFragment :
 
         with(appModule) {
             initValues(this@DriveFragment.requireContext())
+            InternalAppLogging.setListener(AppLogEventSource(push))
             startForegroundService()
             driveReadyCallback()
         }

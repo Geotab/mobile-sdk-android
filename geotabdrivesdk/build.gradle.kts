@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.4.1_68108"
+val versionName = "6.4.1_68202"
 
 plugins {
     id("com.android.library")
@@ -135,7 +135,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.31")
     androidTestImplementation("androidx.test:core:1.0.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.1.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test.espresso:espresso-web:3.4.0")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.2.0")
 }

@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.LifecycleOwner
-import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
@@ -38,7 +37,6 @@ class AppModule(
         functions.add(UpdateLastServerFunction(module = this))
         functions.add(ClearWebViewCacheFunction(module = this))
         functions.add(MoveAppToBackgroundFunction(moveAppToBackground = moveAppToBackground, module = this))
-        InternalAppLogging.setListener(AppLogEventSource(push))
     }
 
     companion object {
