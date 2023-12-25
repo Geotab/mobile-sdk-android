@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.4.1_68226"
+val versionName = "6.4.1_68297"
 
 plugins {
     id("com.android.library")
@@ -120,7 +120,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2-native-mt")
     implementation("com.github.spullara.mustache.java:compiler:0.8.18")
     implementation("androidx.fragment:fragment-ktx:1.4.0-alpha07")
-    debugImplementation("androidx.fragment:fragment-testing:1.4.0-alpha07")
+    debugImplementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
+    debugImplementation("androidx.fragment:fragment-testing:1.6.0-alpha04")
     implementation("com.google.android.gms:play-services-location:17.1.0")
     implementation("com.google.code.gson:gson:2.9.0")
     implementation ("androidx.room:room-runtime:2.5.2")
@@ -133,7 +134,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2-native-mt")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.31")
-    androidTestImplementation("androidx.test:core:1.0.0")
+    androidTestImplementation("androidx.test:core:1.5.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test.espresso:espresso-web:3.4.0")

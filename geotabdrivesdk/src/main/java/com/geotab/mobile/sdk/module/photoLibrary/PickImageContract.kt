@@ -25,13 +25,6 @@ class PickImageContract : ActivityResultContract<PickImageAttribute, PickImageAt
             .setType(pickImageAttribute.input)
     }
 
-    override fun getSynchronousResult(
-        context: Context,
-        input: PickImageAttribute?
-    ): SynchronousResult<PickImageAttribute>? {
-        return null
-    }
-
     override fun parseResult(resultCode: Int, intent: Intent?): PickImageAttribute {
         if (intent != null && resultCode == Activity.RESULT_OK) {
             pictureAttribute.uri = intent.data
