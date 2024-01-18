@@ -43,7 +43,7 @@ interface DriveSdk {
      * Returns the active driver's availability hours for OpenCab
      * @return Json string with the duty status availability
      */
-    fun getOpenCabAvailability(callback: (Result<Success<String>, Failure>) -> Unit)
+    fun getOpenCabAvailability(version: String, callback: (Result<Success<String>, Failure>) -> Unit)
 
     /**
      * - set the vehicle's active driver to the driver id provided.

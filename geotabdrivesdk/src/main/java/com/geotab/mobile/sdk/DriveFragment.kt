@@ -583,9 +583,11 @@ class DriveFragment :
     }
 
     override fun getOpenCabAvailability(
+        version: String,
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
         (findModuleFunction(UserModule.MODULE_NAME, "getOpenCabAvailability") as? GetOpenCabAvailabilityFunction)?.let {
+            it.version = version
             functionCall(callback, it)
         }
     }

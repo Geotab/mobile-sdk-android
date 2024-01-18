@@ -15,6 +15,8 @@ class GetOpenCabAvailabilityFunction(
 ) : ModuleFunction,
     BaseCallbackFunction(name) {
 
+    lateinit var version: String
+
     companion object {
         const val templateFileName = "ModuleFunction.GetOpenCabAvailabilityFunction.Api.js"
     }
@@ -53,7 +55,7 @@ class GetOpenCabAvailabilityFunction(
 
     override fun getJavascript(context: Context, callerId: String): String {
         val scriptParameter: HashMap<String, Any> =
-            hashMapOf("moduleName" to module.name, "functionName" to name)
+            hashMapOf("moduleName" to module.name, "functionName" to name, "version" to version)
         scriptParameter.putAll(hashMapOf("callerId" to callerId))
         return module.getScriptFromTemplate(context, templateFileName, scriptParameter)
     }
