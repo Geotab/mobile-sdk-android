@@ -468,11 +468,18 @@ class DriveFragment :
 
     @JavascriptInterface
     fun postMessage(name: String, function: String, result: String, callback: String) {
-        val jsonObject = JSONObject(result)
-        val params: String? =
-            if (jsonObject.isNull("result")) null else jsonObject.getString("result")
-        val moduleFunction = findModuleFunction(name, function)
-        moduleFunction?.let { callModuleFunction(it, callback, params) }
+        try {
+            val jsonObject = JSONObject(result)
+            val params: String? =
+                if (jsonObject.isNull("result")) null else jsonObject.getString("result")
+            val moduleFunction = findModuleFunction(name, function)
+            moduleFunction?.let { callModuleFunction(it, callback, params) }
+        } catch (e: Exception) {
+            val crashLocation = " in module $name, function $function with params $result."
+            val crashMessage = e.message ?: "Unknown JS exception occurred"
+
+            InternalAppLogging.appLogger?.error(TAG, crashMessage + crashLocation)
+        }
     }
 
     override fun takePictureResult(imageUri: Uri, callback: (Boolean) -> Unit) {
