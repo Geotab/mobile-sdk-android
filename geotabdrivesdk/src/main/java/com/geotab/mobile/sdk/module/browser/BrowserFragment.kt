@@ -30,6 +30,7 @@ import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.util.JsonUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
+import com.geotab.mobile.sdk.util.serializable
 import java.net.MalformedURLException
 import java.net.URL
 
@@ -69,9 +70,7 @@ class BrowserFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let { bundle ->
-            url = (bundle.getSerializable(ARG_URL) as? String)
-        }
+        arguments?.let { bundle -> url = bundle.serializable<String>(ARG_URL) }
     }
 
     override fun onCreateView(

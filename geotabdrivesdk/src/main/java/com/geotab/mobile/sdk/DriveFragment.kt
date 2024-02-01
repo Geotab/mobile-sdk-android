@@ -78,6 +78,7 @@ import com.geotab.mobile.sdk.publicInterfaces.DriveSdk
 import com.geotab.mobile.sdk.publicInterfaces.SpeechEngine
 import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
+import com.geotab.mobile.sdk.util.serializable
 import com.github.mustachejava.DefaultMustacheFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -289,7 +290,7 @@ class DriveFragment :
 
         Module.mustacheFactory = mustacheFactory
         arguments?.let { bundle ->
-            initializeModules((bundle.getSerializable(ARG_MODULES) as? ArrayList<*>)?.filterIsInstance<Module>())
+            initializeModules((bundle.serializable<ArrayList<*>>(ARG_MODULES))?.filterIsInstance<Module>())
         }
         activity?.let { it.onBackPressedDispatcher.addCallback(onBackPressedCallback) }
         contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
