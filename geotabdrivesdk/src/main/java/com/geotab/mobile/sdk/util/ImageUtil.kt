@@ -55,6 +55,24 @@ class ImageUtil(val context: Context) {
     }
 
     /**
+     * Figure out what ratio we can load our image into memory at while still being bigger than
+     * our desired width and height
+     */
+    private fun calculateSampleSize(
+        options: BitmapFactory.Options,
+        reqSize: Pair<Float, Float>
+    ): Float {
+        val (reqWidth: Float, reqHeight: Float) = reqSize
+        // Raw height and width of image
+        val (height: Int, width: Int) = options.run { outHeight to outWidth }
+        return if (width.toFloat() / height.toFloat() > reqWidth / reqHeight) {
+            width.toFloat() / reqWidth
+        } else {
+            height.toFloat() / reqHeight
+        }
+    }
+
+    /**
      * Rotate Image
      * @param source image source as bitmap
      * @param angle angle to rotate
@@ -71,10 +89,19 @@ class ImageUtil(val context: Context) {
     fun rotateAndScaleImage(srcUri: Uri, size: Size?, rotation: Float, scaledUri: Uri): Uri? {
         val (_, originalBitmapOptions) = getOriginalImageSize(
             srcUri = srcUri,
+            inSampleSize = 1,
             inJustDecodeBounds = true
         )
+        size?.let { imgSize ->
+            val aspectWidthHeight = calculateAspectRatio(originalBitmapOptions, imgSize)
+            originalBitmapOptions.inSampleSize =
+                calculateSampleSize(originalBitmapOptions, aspectWidthHeight).toInt()
+        }
+        val sampleSize = originalBitmapOptions.inSampleSize
+
         var (bitmap, _) = getOriginalImageSize(
             srcUri = srcUri,
+            inSampleSize = sampleSize,
             inJustDecodeBounds = false
         )
 
@@ -94,35 +121,34 @@ class ImageUtil(val context: Context) {
                     }
                 }
 
-                bitmap = if (size != null) {
+                if (size != null) {
                     val aspectWidthHeight = calculateAspectRatio(originalBitmapOptions, size)
-
-                    Bitmap.createScaledBitmap(
+                    println("calculate aspect ratio: $aspectWidthHeight")
+                    bitmap = Bitmap.createScaledBitmap(
                         bitmap,
                         (aspectWidthHeight.first * scaleFactor).toInt(),
                         (aspectWidthHeight.second * scaleFactor).toInt(),
                         true
                     )
+                    copyBitmapToUri(scaledUri, bitmap)
+                } else if (scaleFactor == 1.0F && rotation == 0F) {
+                    // Converting an original image to a bitmap format typically results in a size increase of 4 to 5 times.
+                    // Decompressing the bitmap is always bigger than the original file
+                    // So use the original file, when the rotation is not required and scale factor is 1.0F.
+                    // Also, when the size is null and there is enough memory, resulting in scaling factor of 1.0.
+                    copyImageFromUri(srcUri, scaledUri)
+                    return scaledUri
                 } else {
-                    Bitmap.createScaledBitmap(
+                    bitmap = Bitmap.createScaledBitmap(
                         bitmap,
                         (bitmap.width * scaleFactor).toInt(),
                         (bitmap.height * scaleFactor).toInt(),
                         true
                     )
-                }
-
-                val imageCompressionQualityInPercentage = 80
-
-                context.contentResolver.openOutputStream(scaledUri)?.let { oStream ->
-                    bitmap.compress(
-                        Bitmap.CompressFormat.PNG,
-                        imageCompressionQualityInPercentage,
-                        oStream
-                    )
-                    oStream.close()
+                    copyBitmapToUri(scaledUri, bitmap)
                 }
             } else {
+                // when the bitmap is null
                 return null
             }
 
@@ -132,6 +158,34 @@ class ImageUtil(val context: Context) {
             return null
         } finally {
             bitmap?.recycle()
+        }
+    }
+
+    private fun copyBitmapToUri(scaledUri: Uri, bitmap: Bitmap) {
+        val imageCompressionQualityInPercentage = 80
+        context.contentResolver.openOutputStream(scaledUri)?.let { oStream ->
+            bitmap.compress(
+                Bitmap.CompressFormat.PNG,
+                imageCompressionQualityInPercentage,
+                oStream
+            )
+            oStream.close()
+        }
+    }
+
+    private fun copyImageFromUri(fromUri: Uri, toUri: Uri) {
+        context.contentResolver.openOutputStream(toUri)?.use { oStream ->
+            context.contentResolver.openInputStream(fromUri)?.use { iStream ->
+                // Transfer bytes from in to out
+                val buffer = ByteArray(8 * 1024)
+                var bytesRead = iStream.read(buffer)
+                while (bytesRead != -1) {
+                    oStream.write(buffer, 0, bytesRead)
+                    bytesRead = iStream.read(buffer)
+                }
+                iStream.close()
+            }
+            oStream.close()
         }
     }
 
@@ -233,9 +287,11 @@ class ImageUtil(val context: Context) {
      */
     private fun getOriginalImageSize(
         srcUri: Uri,
+        inSampleSize: Int,
         inJustDecodeBounds: Boolean
     ): Pair<Bitmap?, BitmapFactory.Options> {
         val options = BitmapFactory.Options().apply {
+            this.inSampleSize = inSampleSize
             this.inJustDecodeBounds = inJustDecodeBounds
         }
         var fileStream: InputStream? = null
