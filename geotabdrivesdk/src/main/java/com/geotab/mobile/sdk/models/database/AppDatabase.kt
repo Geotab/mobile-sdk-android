@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.geotab.mobile.sdk.models.database.localStorage.LocalStorage
-import com.geotab.mobile.sdk.models.database.localStorage.LocalStorageDao
+import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorage
+import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageDao
 
-@Database(entities = [LocalStorage::class], version = 1)
+@Database(entities = [SecureStorage::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun localStorageDao(): LocalStorageDao
+    abstract fun secureStorageDao(): SecureStorageDao
 
     companion object {
         @Volatile
