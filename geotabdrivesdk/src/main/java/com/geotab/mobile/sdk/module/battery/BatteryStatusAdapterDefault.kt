@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import com.geotab.mobile.sdk.util.regReceiver
 
 class BatteryStatusAdapterDefault(private val context: Context) : BatteryStatusAdapter, BroadcastReceiver() {
     private var delegate: ((result: BatteryStatus) -> Unit)? = null
@@ -12,7 +13,7 @@ class BatteryStatusAdapterDefault(private val context: Context) : BatteryStatusA
     override fun startMonitoringBatteryStatus(onBatteryStatusChange: (result: BatteryStatus) -> Unit) {
         this.delegate = onBatteryStatusChange
         IntentFilter(Intent.ACTION_BATTERY_CHANGED).let {
-            context.registerReceiver(this, it)
+            context.regReceiver(broadcastReceiver = this, intentFilter = it, exported = true)
         }
     }
 

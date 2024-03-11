@@ -5,8 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import com.geotab.mobile.sdk.models.enums.MotionEnum
+import com.geotab.mobile.sdk.util.regReceiver
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
 import com.google.android.gms.location.ActivityTransitionRequest
@@ -35,12 +35,13 @@ class MotionActivityAdapterDefault(private val context: Context) : MotionActivit
 
         val intent = Intent(adapterRegistrationName)
         val request = ActivityTransitionRequest(transitions)
-        var flags = 0
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            flags = PendingIntent.FLAG_MUTABLE
-        }
 
-        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, flags)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
 
         val task = ActivityRecognition.getClient(context)
             .requestActivityTransitionUpdates(request, pendingIntent)
@@ -53,10 +54,7 @@ class MotionActivityAdapterDefault(private val context: Context) : MotionActivit
             isMotionActivityRegistered = false
         }
 
-        context.registerReceiver(
-            this,
-            IntentFilter(adapterRegistrationName)
-        )
+        context.regReceiver(broadcastReceiver = this, intentFilter = IntentFilter(adapterRegistrationName), exported = true)
 
         // First true means the user granted permission. Second true
         // means the service was started

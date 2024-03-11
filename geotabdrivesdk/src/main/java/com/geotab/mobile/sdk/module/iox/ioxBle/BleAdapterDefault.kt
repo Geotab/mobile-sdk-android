@@ -19,6 +19,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.ParcelUuid
 import android.util.Log
+import com.geotab.mobile.sdk.util.regReceiver
 import java.util.UUID
 
 class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() {
@@ -138,7 +139,7 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
     override fun registerBleStateOffCallback(callback: (() -> Unit)) {
         if (bleStateOffCallback == null) {
             val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
-            context.registerReceiver(this, filter)
+            context.regReceiver(broadcastReceiver = this, intentFilter = filter, exported = true)
             bleStateOffCallback = callback
         }
     }

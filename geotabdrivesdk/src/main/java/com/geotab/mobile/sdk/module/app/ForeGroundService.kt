@@ -6,7 +6,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
 import android.os.Binder
+import android.os.Build.VERSION.SDK_INT
+import android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.PowerManager.PARTIAL_WAKE_LOCK
@@ -64,7 +67,11 @@ class ForeGroundService : Service() {
             title = applicationContext.packageManager.getApplicationLabel(applicationContext.applicationInfo).toString(),
             text = applicationContext.getString(R.string.bgNotificationText)
         )
-        startForeground(NOTIFICATION_ID, makeNotification(settings))
+        if (SDK_INT >= UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, makeNotification(settings), FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, makeNotification(settings))
+        }
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PARTIAL_WAKE_LOCK, "backgroundmode:wakelock").apply { acquire() }
         }
@@ -90,7 +97,7 @@ class ForeGroundService : Service() {
      *
      * @param settings The config settings
      */
-    private fun makeNotification(settings: BackgroundNotification): Notification? {
+    private fun makeNotification(settings: BackgroundNotification): Notification {
         val context = applicationContext
 
         val notificationBuilder: NotificationCompat.Builder = NotificationBuilderProvider(context).getBuilder()

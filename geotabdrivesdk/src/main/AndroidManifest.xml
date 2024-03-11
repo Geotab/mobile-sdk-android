@@ -20,7 +20,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" android:minSdkVersion="34" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"
@@ -53,7 +54,16 @@
                 android:resource="@xml/accessory_filter" />
         </activity>
 
-        <service android:name="com.geotab.mobile.sdk.module.app.ForeGroundService" />
+        <service
+            android:name="com.geotab.mobile.sdk.module.app.ForeGroundService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Geotab Drive offers native notification alerts to drivers concerning both Hours of Service (HOS) violations and availability status. These alerts serve as valuable aids for Geotab Drive users, facilitating enhanced management of work hours and contributing to the reduction of driver fatigue, thereby fostering improved road safety. Moreover, Geotab Drive enables administrators to dispatch native notifications to drivers, providing information on their scheduled daily routes. To further prioritize safety, Geotab Drive incorporates text-to-speech functionality for these native notifications, mitigating the need for drivers to divert their attention from the road while reviewing alerts. This feature underscores Geotab Drive's commitment to promoting seamless communication and safety within the transportation industry.
+"/>
+        </service>
+
 
         <receiver
             android:name="com.geotab.mobile.sdk.module.localNotification.ClearNotificationReceiver"

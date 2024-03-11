@@ -10,6 +10,8 @@ import android.hardware.usb.UsbManager
 import android.os.ParcelFileDescriptor
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
+import com.geotab.mobile.sdk.util.parcelableExtra
+import com.geotab.mobile.sdk.util.regReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -100,7 +102,7 @@ class UsbAdapterDefault(private val context: Context) : UsbAdapter {
             val filter = IntentFilter(ACTION_USB_PERMISSION)
             filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED)
             receiver = Receiver()
-            context.registerReceiver(receiver, filter)
+            context.regReceiver(broadcastReceiver = receiver, intentFilter = filter, exported = true)
         }
     }
 
@@ -116,7 +118,7 @@ class UsbAdapterDefault(private val context: Context) : UsbAdapter {
     inner class Receiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             intent?.also {
-                val accessory = intent.getParcelableExtra<UsbAccessory>(UsbManager.EXTRA_ACCESSORY)
+                val accessory = intent.parcelableExtra<UsbAccessory>(UsbManager.EXTRA_ACCESSORY)
                 if (intent.action == ACTION_USB_PERMISSION) {
                     permission?.let {
                         val isPermitted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)

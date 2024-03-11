@@ -30,6 +30,7 @@ import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.util.JsonUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
+import com.geotab.mobile.sdk.util.regReceiver
 import com.geotab.mobile.sdk.util.serializable
 import java.net.MalformedURLException
 import java.net.URL
@@ -87,7 +88,10 @@ class BrowserFragment : Fragment() {
                 }
             }
         }
-        context?.registerReceiver(broadcastReceiver, IntentFilter("close"))
+        context?.regReceiver(
+            broadcastReceiver = broadcastReceiver,
+            intentFilter = IntentFilter("close")
+        )
         browserBinding = ActivityBrowserBinding.inflate(inflater)
         return browserBinding.root
     }

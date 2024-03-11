@@ -13,6 +13,7 @@ class CloseBrowserWindowFunction(override val name: String = BrowserModule.close
     override fun handleJavascriptCall(jsonString: String?, jsCallback: (Result<Success<String>, Failure>) -> Unit) {
         module.launch {
             val closeIntent = Intent("close")
+            closeIntent.setPackage(context.applicationInfo.packageName)
             context.applicationContext.sendBroadcast(closeIntent)
         }
     }

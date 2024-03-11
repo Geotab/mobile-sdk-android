@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.5.1_68923"
+val versionName = "6.5.1_70630"
 
 plugins {
     id("com.android.library")
@@ -16,7 +16,7 @@ apply {
 }
 
 android {
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         minSdk = 24
