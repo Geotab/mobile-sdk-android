@@ -1,5 +1,6 @@
 package com.geotab.mobile.sdk.util
 
+import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -189,13 +190,16 @@ class ImageUtil(val context: Context) {
     }
 
     private fun calculateScaleFactor(bitmap: Bitmap, size: Size?): Float {
-        // total memory in the app's Java runtime that is allocated and ready for new objects
-        val totalJVMFreeMemory = Runtime.getRuntime().freeMemory()
+        val memoryInfo = ActivityManager.MemoryInfo()
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        activityManager.getMemoryInfo(memoryInfo)
+
+        val availableMemory = memoryInfo.availMem
         val bitmapSize = bitmap.byteCount
 
-        val memoryThreshold = 0.3 // 30% of the available memory
+        val memoryThreshold = 0.8 // 80% of the available memory
 
-        val maxAllowedBitmapSize = (totalJVMFreeMemory * memoryThreshold).toInt() //
+        val maxAllowedBitmapSize = (availableMemory * memoryThreshold).toInt() //
 
         var scaleFactor = if (bitmapSize > maxAllowedBitmapSize) {
             sqrt((maxAllowedBitmapSize.toDouble() / bitmapSize.toDouble()))
