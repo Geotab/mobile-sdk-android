@@ -90,9 +90,7 @@ class OpenBrowserWindowFunction(
         when (external) {
             true -> {
                 try {
-                    val defaultBrowser = Intent(
-                        Intent.ACTION_VIEW
-                    )
+                    val defaultBrowser = Intent(Intent.ACTION_VIEW)
                     defaultBrowser.data = Uri.parse(url)
                     context.startActivity(defaultBrowser)
                     jsCallback(Success("\"$url\""))

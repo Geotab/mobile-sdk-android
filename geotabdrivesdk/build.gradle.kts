@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.5.2_71593"
+val versionName = "6.6.0_71620"
 
 plugins {
     id("com.android.library")
@@ -91,8 +91,7 @@ android {
     }
 
     packagingOptions {
-        exclude("META-INF/AL2.0")
-        exclude("META-INF/LGPL2.1")
+        resources.excludes.add("META-INF/*")
     }
 
     kotlinOptions {
@@ -120,6 +119,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2-native-mt")
     implementation("com.github.spullara.mustache.java:compiler:0.8.18")
     implementation("androidx.fragment:fragment-ktx:1.4.0-alpha07")
+    implementation("androidx.lifecycle:lifecycle-common:2.5.1")
     debugImplementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
     debugImplementation("androidx.fragment:fragment-testing:1.6.0-alpha04")
     implementation("com.google.android.gms:play-services-location:17.1.0")

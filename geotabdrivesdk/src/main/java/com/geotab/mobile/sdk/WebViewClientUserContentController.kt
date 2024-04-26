@@ -1,6 +1,7 @@
 package com.geotab.mobile.sdk
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.http.SslError
 import android.os.Build
 import android.webkit.RenderProcessGoneDetail
@@ -11,6 +12,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
+import androidx.viewbinding.BuildConfig
 import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.interfaces.WebViewClientController
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
@@ -72,6 +74,24 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
             webViewOnBackPressedCallback?.isEnabled = webView.canGoBack()
             appOnBackPressedCallback?.isEnabled = !webView.canGoBack()
         }
+    }
+
+    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+        val urlScheme = request?.url?.scheme ?: ""
+        if (urlScheme.matches(Regex("(tel|mailto|sms|geo)")) && view?.context != null) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.data = request?.url
+                view.context.startActivity(intent)
+                return true
+            } catch (e: Exception) {
+                InternalAppLogging.appLogger?.error(
+                    TAG,
+                    "Error navigating to URL with scheme $urlScheme from WebView context."
+                )
+            }
+        }
+        return false
     }
 
     fun setWebViewCallBack(onBackPressedCallBack: OnBackPressedCallback?) {

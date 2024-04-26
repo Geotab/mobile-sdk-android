@@ -1,11 +1,9 @@
 package com.geotab.mobile.sdk.module.app
 
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.OnLifecycleEvent
 
-class BackgroundModeAdapterDefault(private val lifecycleOwner: LifecycleOwner) : LifecycleObserver, BackgroundModeAdapter {
+class BackgroundModeAdapterDefault(private val lifecycleOwner: LifecycleOwner) : DefaultLifecycleObserver, BackgroundModeAdapter {
     private var delegate: ((result: BackgroundMode) -> Unit)? = null
 
     override fun startMonitoringBackground(onBackgroundChange: (result: BackgroundMode) -> Unit) {
@@ -17,18 +15,18 @@ class BackgroundModeAdapterDefault(private val lifecycleOwner: LifecycleOwner) :
         lifecycleOwner.lifecycle.removeObserver(this)
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-    fun onAppDestroy() {
+    override fun onDestroy(owner: LifecycleOwner) {
+        super.onDestroy(owner)
         delegate?.let { it(BackgroundMode(false)) }
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-    fun onAppBackgrounded() {
+    override fun onPause(owner: LifecycleOwner) {
+        super.onPause(owner)
         delegate?.let { it(BackgroundMode(true)) }
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    fun onAppForegrounded() {
+    override fun onStart(owner: LifecycleOwner) {
+        super.onStart(owner)
         delegate?.let { it(BackgroundMode(false)) }
     }
 }

@@ -118,7 +118,7 @@ data class GeotabCredentials(
 
 ### Overwrite Default Background Service Notification Icon
 
-To use a custom icon for the background service notification, create a metadata object in your AndroidManifest.xml
+To use a custom icon for the foreground service notification, create a metadata object in your AndroidManifest.xml
 ```kotlin
 <meta-data
     android:name="default_notification_icon"
@@ -138,6 +138,14 @@ To override default text color in network error page, create color resource with
 To override default icon in network error page, add a drawable resource with name="whitelabel_banner_icon"
 
 ### Permissions
+
+Geotab Mobile SDK offers native notification alerts to drivers concerning both Hours of Service (HOS) violations and availability status, even when the app is in the background. 
+Following permissions are required for Android SDK 34 and above, to use the foreground service functionality.
+
+```kotlin
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" android:minSdkVersion="34" />
+  ```      
 
 To use the background location functionality, just add the permission in your AndroidManifest.xml
 
