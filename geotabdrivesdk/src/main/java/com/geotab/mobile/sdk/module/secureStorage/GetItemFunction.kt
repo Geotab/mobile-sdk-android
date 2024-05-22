@@ -24,8 +24,10 @@ class GetItemFunction(
         jsCallback: (Result<Success<String>, Failure>) -> Unit
     ) {
         module.launch(module.coroutineContext) {
-            val arguments = transformOrInvalidate(jsonString, jsCallback)
-                ?: return@launch
+            val arguments = jsonString?.takeIf { it.isNotBlank() } ?: run {
+                jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
+                return@launch
+            }
 
             try {
                 val byteResult = secureStorageRepository.getValue(arguments)

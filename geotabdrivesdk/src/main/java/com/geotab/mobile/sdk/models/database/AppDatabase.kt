@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorage
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageDao
 
-@Database(entities = [SecureStorage::class], version = 1)
+@Database(entities = [SecureStorage::class], version = 1, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun secureStorageDao(): SecureStorageDao
 

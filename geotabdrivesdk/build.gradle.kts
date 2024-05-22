@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.6.0_71682"
+val versionName = "6.6.0_71727"
 
 plugins {
     id("com.android.library")
@@ -22,6 +22,10 @@ android {
         minSdk = 24
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
 
         buildConfigField("String", "KEYSTORE_ALIAS", "\"" +  System.getenv("KEYSTORE_ALIAS") + "\"")
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")

@@ -25,8 +25,11 @@ class RemoveItemFunction(
         jsCallback: (Result<Success<String>, Failure>) -> Unit
     ) {
         module.launch(module.coroutineContext) {
-            val arguments = transformOrInvalidate(jsonString, jsCallback)
-                ?: return@launch
+            val arguments = jsonString?.takeIf { it.isNotBlank() } ?: run {
+                jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
+                return@launch
+            }
+
             val result = secureStorageRepository.delete(arguments)
             if (result == 0) {
                 jsCallback(Failure(Error(GeotabDriveError.STORAGE_MODULE_ERROR, ERROR_REMOVING_KEY)))

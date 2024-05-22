@@ -12,7 +12,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
-import androidx.viewbinding.BuildConfig
 import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.interfaces.WebViewClientController
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
