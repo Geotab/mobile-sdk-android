@@ -1,5 +1,6 @@
 package com.geotab.mobile.sdk.module.app
 
+import androidx.annotation.Keep
 import com.geotab.mobile.sdk.logging.LogLevel
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.module.Failure
@@ -8,6 +9,7 @@ import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.util.JsonUtil
 import java.util.Date
 
+@Keep
 data class LogDetail(
     val message: String,
     val level: Int
