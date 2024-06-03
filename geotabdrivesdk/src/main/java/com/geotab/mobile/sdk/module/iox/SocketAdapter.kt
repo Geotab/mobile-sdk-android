@@ -4,6 +4,7 @@ import com.geotab.mobile.sdk.Error
 
 abstract class SocketAdapter {
     var uuidStr: String? = null
+
     interface Listener {
         fun onOpen(exception: Error? = null)
         fun onCloseUnexpectedly(exception: Error)

@@ -266,14 +266,16 @@ class SocketAdapterBleDefault internal constructor(
                     bleAdapter.stopAdvertise(advertisingCallback)
                 }
             } else if (newState == BluetoothGattServer.STATE_DISCONNECTED && bluetoothDevice == device) {
+                state = State.Idle
+
+                stopBle(advertisingCallback)
+
                 listener?.onCloseUnexpectedly(
                     Error(
                         GeotabDriveError.MODULE_BLE_ERROR,
                         BLE_DISCONNECTED
                     )
                 )
-                state = State.Advertising
-                bleAdapter.startAdvertise(uuidStr, advertisingCallback)
             }
         }
 

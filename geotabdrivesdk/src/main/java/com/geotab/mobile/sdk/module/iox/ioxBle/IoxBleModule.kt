@@ -85,7 +85,7 @@ class IoxBleModule(
         return scripts
     }
 
-    fun start(uuidStr: String, jsCallback: (Result<Success<String>, Failure>) -> Unit) {
+    fun start(startIoxBleOptions: StartIoxBleOptions, jsCallback: (Result<Success<String>, Failure>) -> Unit) {
         if (startCallback != null) {
             jsCallback(
                 Failure(
@@ -98,7 +98,8 @@ class IoxBleModule(
             return
         }
 
-        ioxClient.uuidStr = uuidStr
+        ioxClient.uuidStr = startIoxBleOptions.uuid
+        ioxClient.reconnect = startIoxBleOptions.reconnect
         startCallback = jsCallback
         ioxClient.start(this)
     }

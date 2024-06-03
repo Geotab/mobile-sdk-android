@@ -24,6 +24,8 @@ class GeotabIoxClient(
             field = value
         }
 
+    var reconnect: Boolean = false
+
     sealed class State {
         object Idle : State()
         object Opening : State()
@@ -79,8 +81,15 @@ class GeotabIoxClient(
             if (exception.message != SocketAdapterBleDefault.BLE_DISCONNECTED) {
                 this.listener = null
             }
-            state = State.Idle
+
             it.onStoppedUnexpectedly(exception)
+
+            if (reconnect) {
+                state = State.Opening
+                socket.open(this, true)
+            } else {
+                state = State.Idle
+            }
         }
     }
 
