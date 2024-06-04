@@ -476,13 +476,13 @@ declare namespace geotabModules {
 
         /**********
         * Start the IOX BLE service and move it to the Advertising state. Until stop() is called service will automatically return to Advertising again after a disconnection.
-        * 
-        * @param argument: string. The UUID unique to the GO device that will be connected
+        *
+        * @param argument: { uuid: string, reconnect?: boolean }. The UUID unique to the GO device that will be connected and a flag indicating whether or not to automatically reconnect to the device if the connection is lost.
         * @param callback: (err?: Error, result?: string) => void.
         *      - err: Error. Set if an issue occurs during start, E.g. bluetooth is not enabled.
         *      - result: string. On a successful start this value will be set. Its content is reserved for future use.
         */
-        function start(argument: string, callback: (err?: Error, result?: undefined) => void);
+        function start(argument: { uuid: string, reconnect?: boolean }, callback: (err?: Error, result?: undefined) => void);
 
         /**********
         * Stop the IOX BLE service and return to the Idle state. 
