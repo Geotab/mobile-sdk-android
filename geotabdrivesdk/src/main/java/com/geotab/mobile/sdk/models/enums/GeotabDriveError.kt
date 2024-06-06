@@ -2,7 +2,6 @@ package com.geotab.mobile.sdk.models.enums
 
 enum class GeotabDriveError {
     MODULE_FUNCTION_ARGUMENT_ERROR,
-    MODULE_MOTION_ACTIVITY_ERROR,
     MODULE_GEOLOCATION_ERROR,
     INVALID_CALL_ERROR,
     API_CALL_TIMEOUT_ERROR,

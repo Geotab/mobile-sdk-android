@@ -153,14 +153,5 @@ To use the background location functionality, just add the permission in your An
 <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 ```
 
-To use the activity motion tracking from the device, just add these two permissions as needed in your AndroidManifest.xml
-
-```kotlin
-<!-- Required for Android API 28 and below. -->
-<uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION" />
-<!-- Required for Android API 29+. -->
-<uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-```
-
 ## License
 GeotabDriveSDK is available under the MIT license. See the LICENSE file for more info. 

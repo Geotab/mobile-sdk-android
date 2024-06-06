@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.6.0_71817"
+val versionName = "6.6.0_71841"
 
 plugins {
     id("com.android.library")
@@ -126,7 +126,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-common:2.5.1")
     debugImplementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
     debugImplementation("androidx.fragment:fragment-testing:1.6.0-alpha04")
-    implementation("com.google.android.gms:play-services-location:17.1.0")
     implementation("com.google.code.gson:gson:2.9.0")
     implementation ("androidx.room:room-runtime:2.5.2")
     implementation("androidx.room:room-ktx:2.5.2")

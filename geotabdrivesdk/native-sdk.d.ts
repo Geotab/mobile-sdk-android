@@ -399,50 +399,6 @@ declare namespace geotabModules {
         function moveFile(argument: { srcPath: string; destPath: string; overwrite?: number; }, callback: (err?: Error, result?: undefined) => void);
     }
 
-    namespace motion {
-        enum MotionActivityType {
-            Unknown = 0,
-            Stationary,
-            Walking,
-            Running,
-            Biking,
-            Driving
-        }
-        /********
-         * start monitoring "geotab.motion" event.
-         * @param argument: undefined
-         * @param callback:
-         *  err: Error, if permission denied, or motion sensor is not available, callback will be called with an error.
-         *  result: undefined, if success, otherwise callback will be called with the corresponding motion type.
-         *
-         * To listen for the event:
-         * window.addEventListener("geotab.motion", (param) => {
-         *     console.log("geotab.motion event: ", param.detail); // detail is of type MotionActivityType
-         * });
-         */
-        function startMonitoringMotionActivity(argument: undefined, callback: (err?: Error, result?: undefined) => void);
-
-        /********
-         * stop monitoring "geotab.motion" event. Will always success even if startMonitoringMotionActivity() was not called, or called with error.
-         * @param argument: undefined
-         * @param callback:
-         *  err: Error, will always be undefined.
-         *  result: undefined.
-         */
-        function stopMonitoringMotionActivity(argument: undefined, callback: (err?: Error, result?: undefined) => void);
-
-        /*******
-         * Motion event
-         * @param detail: MotionActivityType
-         *
-         * To listen for the event:
-         * window.addEventListener("geotab.motion", (param) => {
-         *     console.log("geotab.motion event: ", param.detail); // detail is of type MotionActivityType
-         * });
-         */
-        // event: "geotab.motion";
-    }
-
     namespace ioxble {
 
         enum State {

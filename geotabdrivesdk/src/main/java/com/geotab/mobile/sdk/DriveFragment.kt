@@ -48,7 +48,6 @@ import com.geotab.mobile.sdk.module.geolocation.GeolocationModule
 import com.geotab.mobile.sdk.module.iox.ioxBle.IoxBleModule
 import com.geotab.mobile.sdk.module.iox.ioxUsb.IoxUsbModule
 import com.geotab.mobile.sdk.module.localNotification.LocalNotificationModule
-import com.geotab.mobile.sdk.module.motion.MotionActivityModule
 import com.geotab.mobile.sdk.module.photoLibrary.PhotoLibraryDelegate
 import com.geotab.mobile.sdk.module.photoLibrary.PhotoLibraryModule
 import com.geotab.mobile.sdk.module.photoLibrary.PickImageAttribute
@@ -214,10 +213,6 @@ class DriveFragment :
         AppearanceModule(requireContext())
     }
 
-    private val motionActivityModule: MotionActivityModule by lazy {
-        MotionActivityModule(requireContext(), permissionDelegate = this, push = push)
-    }
-
     private val ioxUsbModule: IoxUsbModule by lazy {
         IoxUsbModule(requireContext(), push = push)
     }
@@ -244,7 +239,6 @@ class DriveFragment :
             context?.let { LocalNotificationModule(it, this) },
             batteryModule,
             appearanceModule,
-            motionActivityModule,
             appModule,
             context?.let { ConnectivityModule(it, evaluate, push) },
             context?.let { FileSystemModule(it) },
