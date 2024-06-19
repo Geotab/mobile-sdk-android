@@ -1,5 +1,6 @@
 package com.geotab.mobile.sdk.module.secureStorage
 
+import androidx.annotation.Keep
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorage
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
@@ -15,6 +16,7 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 
+@Keep
 data class SetItemArguments(val key: String, val value: String)
 
 class SetItemFunction(
