@@ -2,6 +2,7 @@ package com.geotab.mobile.sdk.module.iox.ioxBle
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.Keep
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.DeviceEvent
 import com.geotab.mobile.sdk.models.DeviceEventDetail
@@ -25,7 +26,9 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import kotlin.coroutines.CoroutineContext
 
+@Keep
 data class IoxStateEventDetail(val state: Int)
+@Keep
 data class IoxStateEvent(val detail: IoxStateEventDetail)
 
 class IoxBleModule(
