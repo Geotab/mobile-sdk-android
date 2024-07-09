@@ -670,19 +670,19 @@ class DriveFragment :
     }
 
     override fun setCustomURLPath(path: String) {
-        val newPath = path.trim().ifEmpty {
-            "main"
+        path.trim().ifEmpty {
+            return
         }
 
         if (isWebViewConfigured) {
             this.webView?.evaluateJavascript(
                 """
-                    window.location.hash="$newPath";
+                    window.location.hash="$path";
                 """.trimIndent()
             ) {}
             this.customUrl = null
         } else {
-            this.customUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$newPath"
+            this.customUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$path"
         }
     }
 
