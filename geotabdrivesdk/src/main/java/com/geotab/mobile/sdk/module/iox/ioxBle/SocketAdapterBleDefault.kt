@@ -164,11 +164,11 @@ class SocketAdapterBleDefault internal constructor(
     }
 
     override fun write(byteArray: ByteArray) {
-        notifyCharacteristic.value = byteArray
         bluetoothDevice?.let {
             bleAdapter.notifyCharacteristicUpdate(
                 it,
-                notifyCharacteristic
+                notifyCharacteristic,
+                byteArray
             )
         }
     }

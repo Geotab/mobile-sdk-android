@@ -19,6 +19,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.ParcelUuid
 import android.util.Log
+import com.geotab.mobile.sdk.util.callNotifyCharacteristicChanged
 import com.geotab.mobile.sdk.util.regReceiver
 import java.util.UUID
 
@@ -118,13 +119,13 @@ class BleAdapterDefault(val context: Context) : BleAdapter, BroadcastReceiver() 
         }
     }
 
-    @SuppressLint("MissingPermission")
     override fun notifyCharacteristicUpdate(
         bluetoothDevice: BluetoothDevice,
-        bluetoothGattCharacteristic: BluetoothGattCharacteristic
+        bluetoothGattCharacteristic: BluetoothGattCharacteristic,
+        byteArray: ByteArray
     ) {
         gattServer?.apply {
-            notifyCharacteristicChanged(bluetoothDevice, bluetoothGattCharacteristic, false)
+            callNotifyCharacteristicChanged(bluetoothDevice, bluetoothGattCharacteristic, false, byteArray)
         }
     }
 

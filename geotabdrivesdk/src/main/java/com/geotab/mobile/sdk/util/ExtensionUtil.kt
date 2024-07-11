@@ -1,6 +1,9 @@
 package com.geotab.mobile.sdk.util
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattServer
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -45,5 +48,17 @@ fun Context.regReceiver(broadcastReceiver: BroadcastReceiver?, intentFilter: Int
         }
     } else {
         registerReceiver(broadcastReceiver, intentFilter)
+    }
+}
+
+@Suppress("DEPRECATION")
+@SuppressLint("MissingPermission")
+inline fun BluetoothGattServer.callNotifyCharacteristicChanged(device: BluetoothDevice, characteristic: BluetoothGattCharacteristic, confirm: Boolean, value: ByteArray): Any = when {
+    SDK_INT >= TIRAMISU -> {
+        this.notifyCharacteristicChanged(device, characteristic, confirm, value)
+    }
+    else -> {
+        characteristic.value = value
+        this.notifyCharacteristicChanged(device, characteristic, confirm)
     }
 }

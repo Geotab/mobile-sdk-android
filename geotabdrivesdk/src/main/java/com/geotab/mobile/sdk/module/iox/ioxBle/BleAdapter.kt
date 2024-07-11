@@ -30,7 +30,8 @@ interface BleAdapter {
 
     fun notifyCharacteristicUpdate(
         bluetoothDevice: BluetoothDevice,
-        bluetoothGattCharacteristic: BluetoothGattCharacteristic
+        bluetoothGattCharacteristic: BluetoothGattCharacteristic,
+        byteArray: ByteArray
     )
 
     fun registerBleStateOffCallback(callback: (() -> Unit))
