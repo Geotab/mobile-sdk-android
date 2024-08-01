@@ -23,9 +23,13 @@ interface DriveSdk {
 
     /**
      * Returns all users, including the active driver and co-drivers
+     * @param includeAllUsers defaults to true, to return all users including the active driver and co-drivers
+     * if set to false, it will return only the active driver
+     * @param callback returns error when there is no user logged in. Otherwise returns a Json string with all logged in users
      * @return Json string with all logged in users
      */
-    fun getAllUsers(callback: (Result<Success<String>, Failure>) -> Unit)
+
+    fun getAllUsers(includeAllUsers: Boolean = true, callback: (Result<Success<String>, Failure>) -> Unit)
 
     /**
      * Returns all the violations the active driver has since the start of their cycle

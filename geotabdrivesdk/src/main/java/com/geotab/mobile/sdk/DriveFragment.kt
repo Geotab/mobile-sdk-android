@@ -558,8 +558,9 @@ class DriveFragment :
         }
     }
 
-    override fun getAllUsers(callback: (Result<Success<String>, Failure>) -> Unit) {
+    override fun getAllUsers(includeAllUsers: Boolean, callback: (Result<Success<String>, Failure>) -> Unit) {
         (findModuleFunction(UserModule.MODULE_NAME, "getAll") as? GetAllUsersFunction)?.let {
+            it.includeAllUsers = includeAllUsers
             functionCall(callback, it)
         }
     }
@@ -754,7 +755,7 @@ class DriveFragment :
         } ?: run {
             logger.error(
                 TAG,
-                "function call failed - no context",
+                "function ${moduleFunction.name} call failed - no context",
                 Error(GeotabDriveError.NO_CONTEXT)
             )
             callback(Failure(Error(GeotabDriveError.NO_CONTEXT)))

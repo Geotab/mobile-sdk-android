@@ -14,6 +14,7 @@ open class GetAllUsersFunction(
     override val module: UserModule
 ) : ModuleFunction,
     BaseCallbackFunction(name) {
+    var includeAllUsers = true
     companion object {
         const val templateFileName = "ModuleFunction.GetAllUsersFunction.Api.js"
     }
@@ -37,7 +38,7 @@ open class GetAllUsersFunction(
 
     override fun getJavascript(context: Context, callerId: String): String {
         val scriptParameter: HashMap<String, Any> =
-            hashMapOf("moduleName" to module.name, "functionName" to name, "getAllUsers" to "true")
+            hashMapOf("moduleName" to module.name, "functionName" to name, "getAllUsers" to includeAllUsers)
         scriptParameter.putAll(hashMapOf("callerId" to callerId))
         return module.getScriptFromTemplate(context, templateFileName, scriptParameter)
     }
