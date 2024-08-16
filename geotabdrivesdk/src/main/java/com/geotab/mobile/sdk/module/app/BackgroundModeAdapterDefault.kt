@@ -25,8 +25,8 @@ class BackgroundModeAdapterDefault(private val lifecycleOwner: LifecycleOwner) :
         delegate?.let { it(BackgroundMode(true)) }
     }
 
-    override fun onStart(owner: LifecycleOwner) {
-        super.onStart(owner)
+    override fun onResume(owner: LifecycleOwner) {
+        super.onResume(owner)
         delegate?.let { it(BackgroundMode(false)) }
     }
 }
