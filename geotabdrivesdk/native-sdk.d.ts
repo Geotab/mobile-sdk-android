@@ -492,6 +492,16 @@ declare namespace geotabModules {
         function samlLogin(argument: { samlLoginUrl: string }, callback: (err?: Error, result?: string) => void);
     }
 
+    namespace pip {
+         /*******
+         * Set Picture-in-Picture mode status on the device.
+         * @param argument: { isEnabled: boolean }
+         * @param callback:
+         *  callback will be called with `err` if the argument format is incorrect. Otherwise, err is null and result is undefined.
+         */
+         function setStatusPiP(argument: { isEnabled: boolean }, callback: (err?: Error, result?: undefined) => void);
+    }
+
     namespace appearance {
         enum AppearanceType {
             Unknown = 0,
