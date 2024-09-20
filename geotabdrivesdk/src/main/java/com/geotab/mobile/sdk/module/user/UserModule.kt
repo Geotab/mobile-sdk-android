@@ -18,6 +18,7 @@ class UserModule : Module(MODULE_NAME) {
         functions.add(GetViolationsFunction(module = this))
         functions.add(SetDriverSeatFunction(module = this))
         functions.add(GetAvailabilityFunction(module = this))
+        functions.add(GetMinAvailabilityHtmlFunction(module = this))
         functions.add(GetHosRuleSetFunction(module = this))
         functions.add(DriverActionNecessaryFunction(module = this))
         functions.add(PageNavigationFunction(module = this))

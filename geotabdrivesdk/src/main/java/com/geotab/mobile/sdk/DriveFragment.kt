@@ -62,6 +62,7 @@ import com.geotab.mobile.sdk.module.user.DriverActionNecessaryCallbackType
 import com.geotab.mobile.sdk.module.user.GetAllUsersFunction
 import com.geotab.mobile.sdk.module.user.GetAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetHosRuleSetFunction
+import com.geotab.mobile.sdk.module.user.GetMinAvailabilityHtmlFunction
 import com.geotab.mobile.sdk.module.user.GetOpenCabAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetViolationsFunction
 import com.geotab.mobile.sdk.module.user.LoginRequiredCallbackType
@@ -580,6 +581,16 @@ class DriveFragment :
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
         (findModuleFunction(UserModule.MODULE_NAME, "getAvailability") as? GetAvailabilityFunction)?.let {
+            it.userName = userName
+            functionCall(callback, it)
+        }
+    }
+
+    override fun getMinAvailabilityHtml(
+        userName: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
+        (findModuleFunction(UserModule.MODULE_NAME, "getMinAvailabilityHtml") as? GetMinAvailabilityHtmlFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }

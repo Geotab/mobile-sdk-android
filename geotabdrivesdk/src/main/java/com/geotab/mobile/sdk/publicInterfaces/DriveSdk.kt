@@ -44,6 +44,12 @@ interface DriveSdk {
     fun getAvailability(userName: String, callback: (Result<Success<String>, Failure>) -> Unit)
 
     /**
+     * Returns the active driver's Minimum availability as html
+     * @return Html string with the minimum availability
+     */
+    fun getMinAvailabilityHtml(userName: String, callback: (Result<Success<String>, Failure>) -> Unit)
+
+    /**
      * Returns the active driver's availability hours for OpenCab
      * @return Json string with the duty status availability
      */
