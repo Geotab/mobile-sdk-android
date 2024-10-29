@@ -93,6 +93,10 @@ class MyGeotabFragment :
         UserAgentUtil(requireContext())
     }
 
+    private val ssoModule: SSOModule by lazy {
+        SSOModule(this.parentFragmentManager, preference)
+    }
+
     private val cookieManager: CookieManager by lazy {
         CookieManager.getInstance()
     }
@@ -113,7 +117,7 @@ class MyGeotabFragment :
             deviceModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
             webViewModule,
-            context?.let { SSOModule(this.parentFragmentManager) }
+            ssoModule
         )
     }
 

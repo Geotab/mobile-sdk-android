@@ -225,6 +225,10 @@ class DriveFragment :
         activity?.let { WebViewModule(it, goBack) }
     }
 
+    private val ssoModule: SSOModule by lazy {
+        SSOModule(this.parentFragmentManager, preference)
+    }
+
     private val secureStorageModule: SecureStorageModule by lazy {
         SecureStorageModule(requireContext())
     }
@@ -248,7 +252,7 @@ class DriveFragment :
             ioxUsbModule,
             geolocationModule,
             ioxbleModule,
-            context?.let { SSOModule(this.parentFragmentManager) },
+            ssoModule,
             secureStorageModule
         )
     }

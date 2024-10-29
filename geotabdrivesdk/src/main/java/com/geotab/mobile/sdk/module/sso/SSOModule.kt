@@ -1,5 +1,6 @@
 package com.geotab.mobile.sdk.module.sso
 
+import android.content.SharedPreferences
 import androidx.fragment.app.FragmentManager
 import com.geotab.mobile.sdk.module.Module
 import kotlinx.coroutines.CoroutineScope
@@ -8,7 +9,8 @@ import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
 class SSOModule(
-    fragmentManager: FragmentManager
+    fragmentManager: FragmentManager,
+    val preference: SharedPreferences?
 ) : Module(MODULE_NAME), CoroutineScope {
 
     companion object {

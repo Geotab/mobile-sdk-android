@@ -23,6 +23,7 @@ import com.geotab.mobile.sdk.BuildConfig
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.R
 import com.geotab.mobile.sdk.databinding.ActivityBrowserBinding
+import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
@@ -42,6 +43,7 @@ class BrowserFragment : Fragment() {
     var samlCallback: ((Result<Success<String>, Failure>) -> Unit)? = null
     var url: String? = null
     var script: String? = null
+    var isUserAgentKillSwitchOn = false
     private var isCallbackCompleted = false
 
     private val userAgentUtil: UserAgentUtil by lazy {
@@ -51,6 +53,7 @@ class BrowserFragment : Fragment() {
     @Keep
     companion object {
         private const val ARG_URL = "url"
+        private const val TAG = "BrowserFragment"
 
         /**
          * Use this factory method to create a new instance of
@@ -123,7 +126,15 @@ class BrowserFragment : Fragment() {
             domStorageEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
             setSupportMultipleWindows(true)
-            userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
+            userAgentString = if (isUserAgentKillSwitchOn) {
+                userAgentUtil.getUserAgent(webView.settings.userAgentString)
+            } else {
+                InternalAppLogging.appLogger?.error(
+                    TAG,
+                    "UserAgent: ${userAgentUtil.getUserAgent(webView.settings.userAgentString)}"
+                )
+                userAgentUtil.getUserAgent(webView.settings.userAgentString).replace("; wv", "")
+            }
             setGeolocationEnabled(true)
         }
     }

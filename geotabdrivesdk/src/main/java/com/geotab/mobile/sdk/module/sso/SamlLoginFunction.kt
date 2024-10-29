@@ -50,6 +50,8 @@ class SamlLoginFunction(
 
             browserFragment.script = moduleScripts
             browserFragment.samlCallback = samlCallback
+            browserFragment.isUserAgentKillSwitchOn =
+                module.preference?.getBoolean("DRIVE.ANDROID_ONLY_USER_AGENT_KILL_SWITCH", false) ?: false
             replaceFragment(browserFragment, BrowserModule.BROWSER_TAG, fragmentManager)
         }
     }
