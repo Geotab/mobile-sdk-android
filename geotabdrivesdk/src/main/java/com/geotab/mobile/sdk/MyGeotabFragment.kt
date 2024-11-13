@@ -57,6 +57,7 @@ class MyGeotabFragment :
     private val myGeotabUrl = "https://${MyGeotabConfig.serverAddress}"
     private val mustacheFactory by lazy { DefaultMustacheFactory() }
     private lateinit var preference: SharedPreferences
+    private var appPreferences: SharedPreferences? = null
 
     private val pushScriptUtil: PushScriptUtil by lazy {
         PushScriptUtil()
@@ -94,7 +95,7 @@ class MyGeotabFragment :
     }
 
     private val ssoModule: SSOModule by lazy {
-        SSOModule(this.parentFragmentManager, preference)
+        SSOModule(this.parentFragmentManager, appPreferences)
     }
 
     private val cookieManager: CookieManager by lazy {
@@ -137,8 +138,12 @@ class MyGeotabFragment :
          */
         @Keep
         @JvmStatic
-        fun newInstance(modules: ArrayList<Module> = arrayListOf()) =
+        fun newInstance(
+            modules: ArrayList<Module> = arrayListOf(),
+            appPreferences: SharedPreferences? = null
+        ) =
             MyGeotabFragment().apply {
+                this.appPreferences = appPreferences
                 arguments = Bundle().apply {
                     putSerializable(ARG_MODULES, modules)
                 }

@@ -157,6 +157,7 @@ class DriveFragment :
 
     private val mustacheFactory by lazy { DefaultMustacheFactory() }
     private lateinit var preference: SharedPreferences
+    private var appPreferences: SharedPreferences? = null
 
     private val userAgentUtil: UserAgentUtil by lazy {
         UserAgentUtil(requireContext())
@@ -226,7 +227,7 @@ class DriveFragment :
     }
 
     private val ssoModule: SSOModule by lazy {
-        SSOModule(this.parentFragmentManager, preference)
+        SSOModule(this.parentFragmentManager, appPreferences)
     }
 
     private val secureStorageModule: SecureStorageModule by lazy {
@@ -392,10 +393,12 @@ class DriveFragment :
         @JvmStatic
         fun newInstance(
             modules: ArrayList<Module> = arrayListOf(),
-            logger: Logging = Logger.shared
+            logger: Logging = Logger.shared,
+            appPreferences: SharedPreferences? = null
         ): DriveFragment =
             DriveFragment().apply {
                 this.logger = logger
+                this.appPreferences = appPreferences
                 arguments = Bundle().apply {
                     putSerializable(ARG_MODULES, modules)
                 }
