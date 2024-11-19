@@ -6,4 +6,7 @@
     <string name="networkError">No Network Connection</string>
     <string name="download_error" tools:ignore="MissingTranslation">Download failed.</string>
     <string name="downloading" tools:ignore="MissingTranslation">Downloading %1$s</string>
+    <string name="default_notification_channel_id" tools:ignore="MissingTranslation">RulesViolationChannel</string>
+    <string name="default_notification_channel_name">MyGeotab rule exceptions</string>
+    <string name="default_notification_channel_desc">Channel for informing admins of rule exceptions</string>
 </resources>

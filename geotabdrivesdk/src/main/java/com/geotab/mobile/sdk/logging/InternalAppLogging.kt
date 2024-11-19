@@ -1,8 +1,10 @@
 package com.geotab.mobile.sdk.logging
 
 import android.util.Log
+import androidx.annotation.Keep
 import com.geotab.mobile.sdk.module.app.AppLogEventListener
 
+@Keep
 enum class LogLevel(val type: Int) {
     INFO(0),
     WARN(1),
@@ -18,10 +20,12 @@ enum class LogLevel(val type: Int) {
     }
 }
 
+@Keep
 class InternalAppLogging(
     private val listener: AppLogEventListener
 ) : Logging {
 
+    @Keep
     companion object {
         @Volatile
         var appLogger: Logging? = null

@@ -94,9 +94,8 @@ abstract class BaseCallbackFunction(open val name: String) :
 
             delay(DriveSdkConfig.apiCallTimeoutMilli)
 
-            callbacks[callerId]?.let { singleCallback ->
+            callbacks.remove(callerId)?.let { singleCallback ->
                 singleCallback(Failure(Error(GeotabDriveError.API_CALL_TIMEOUT_ERROR)))
-                callbacks.remove(callerId)
             }
         }
     }
