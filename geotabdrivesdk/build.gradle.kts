@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.1_72963"
+val versionName = "6.7.2_73154"
 
 plugins {
     id("com.android.library")
@@ -129,7 +129,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-common:2.5.1")
     implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
     debugImplementation("androidx.fragment:fragment-testing:1.6.0-alpha04")
-    implementation("com.google.code.gson:gson:2.9.0")
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation ("androidx.room:room-runtime:2.5.2")
     implementation("androidx.room:room-ktx:2.5.2")
     annotationProcessor("androidx.room:room-compiler:2.5.2")

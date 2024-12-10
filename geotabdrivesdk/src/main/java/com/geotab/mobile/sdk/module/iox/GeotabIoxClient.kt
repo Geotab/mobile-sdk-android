@@ -35,7 +35,7 @@ class GeotabIoxClient(
     }
 
     interface Listener {
-        fun onStart(exception: Error? = null)
+        fun onStart(state: State, exception: Error? = null)
         fun onStoppedUnexpectedly(exception: Error)
         fun onEvent(deviceEvent: DeviceEvent?, exception: Error? = null)
         fun onDisconnect()
@@ -45,6 +45,7 @@ class GeotabIoxClient(
     fun start(listener: Listener) {
         if (state != State.Idle) {
             listener.onStart(
+                state,
                 Error(
                     GeotabDriveError.MODULE_BLE_ERROR,
                     SocketAdapterBleDefault.BLE_ALREADY_CONNECTED
@@ -73,6 +74,9 @@ class GeotabIoxClient(
             return
         }
         state = State.Syncing
+        // After successful advertisement, call onstart to return success callback
+        // IoxUsb will return success callback only when the state is connected.
+        this.listener?.onStart(state)
         sendSyncMessage()
     }
 
@@ -127,7 +131,8 @@ class GeotabIoxClient(
                 if (byteArray.contentEquals(ACK.data)) {
                     this.state = State.Connected
                     if (!state.previouslyConnected) {
-                        listener?.onStart()
+                        // IoxUsb will return success callback because the state is connected now.
+                        listener?.onStart(this.state)
                     }
                 }
             }
