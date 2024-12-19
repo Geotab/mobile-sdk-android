@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.2_73215"
+val versionName = "6.7.2_73246"
 
 plugins {
     id("com.android.library")
@@ -120,6 +120,7 @@ android {
 dependencies {
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:1.8.10")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation("androidx.core:core-ktx:1.13.0")
     implementation("androidx.constraintlayout:constraintlayout:2.0.3")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.1")
