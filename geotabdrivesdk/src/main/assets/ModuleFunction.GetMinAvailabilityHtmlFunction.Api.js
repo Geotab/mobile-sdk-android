@@ -7,8 +7,7 @@
     }
 
     const api = window.webViewLayer.getApi(userName);
-    // legacy html set to false to retrieve the new availability html
-    const availabilityHtml = await api.mobile.user.getMinAvailabilityHtml(false);
+    const availabilityHtml = await api.mobile.user.getMinAvailabilityHtml();
 
     window.geotabModules.{{moduleName}}.{{functionName}}(
       { callerId, result: availabilityHtml },

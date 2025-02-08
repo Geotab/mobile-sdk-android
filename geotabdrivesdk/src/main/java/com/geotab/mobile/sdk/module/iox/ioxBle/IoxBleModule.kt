@@ -121,11 +121,11 @@ class IoxBleModule(
         jsCallback(Success("undefined"))
     }
 
-    override fun onStart(state: GeotabIoxClient.State, exception: Error?) {
+    override fun onStart(exception: Error?) {
         if (exception != null) {
             Log.e(TAG, "IoxBle Client failed to start ${exception.getErrorCode()}", exception)
             onStoppedUnexpectedly(exception)
-        } else if (state == GeotabIoxClient.State.Syncing) {
+        } else {
             callStartCallback(Success("undefined"))
         }
     }

@@ -1,6 +1,5 @@
 package com.geotab.mobile.sdk.module
 
-import androidx.annotation.Keep
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.google.gson.Gson
@@ -12,7 +11,6 @@ import java.lang.reflect.Type
  *
  * @param T the type of object the JSON String will be transformed into
  */
-@Keep
 abstract class BaseFunction<T> {
     abstract fun getType(): Type
 

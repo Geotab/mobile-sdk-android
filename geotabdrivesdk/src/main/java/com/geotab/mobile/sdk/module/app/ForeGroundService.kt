@@ -15,7 +15,6 @@ import android.os.PowerManager
 import android.os.PowerManager.PARTIAL_WAKE_LOCK
 import android.os.PowerManager.WakeLock
 import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
 import com.geotab.mobile.sdk.NotificationActivity
 import com.geotab.mobile.sdk.R
 import com.geotab.mobile.sdk.models.BackgroundNotification
@@ -69,7 +68,7 @@ class ForeGroundService : Service() {
             text = applicationContext.getString(R.string.bgNotificationText)
         )
         if (SDK_INT >= UPSIDE_DOWN_CAKE) {
-            ServiceCompat.startForeground(this, NOTIFICATION_ID, makeNotification(settings), FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(NOTIFICATION_ID, makeNotification(settings), FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(NOTIFICATION_ID, makeNotification(settings))
         }

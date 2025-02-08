@@ -4,6 +4,4 @@
     <string name="refresh">更新</string>
     <string name="errorMsg">再度お試しください。</string>
     <string name="networkError">ネットワークは接続されていません</string>
-    <string name="default_notification_channel_name">MyGeotab例外規定</string>
-    <string name="default_notification_channel_desc">ルールの例外を管理者に通知するチャンネル</string>
 </resources>
