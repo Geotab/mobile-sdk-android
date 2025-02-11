@@ -55,12 +55,12 @@ class OpenBrowserWindowFunction(
 
             // Check if the Gson Transformer converts to null value.
             @Suppress("SENSELESS_COMPARISON")
-            if (arguments.url == null) {
+            if (arguments.url.isNullOrEmpty()) {
                 jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
                 return@launch
             }
 
-            val urlString = arguments.url
+            val urlString = arguments.url.trim()
             val targetString = arguments.target
 
             when (getTarget(targetString)) {
@@ -103,8 +103,8 @@ class OpenBrowserWindowFunction(
                     jsCallback(
                         Failure(
                             Error(
-                                GeotabDriveError.MODULE_GEOLOCATION_ERROR,
-                                BrowserModule.ERROR_GETTING_MAPS_APP_IN_DEVICE
+                                GeotabDriveError.MODULE_BROWSER_ERROR,
+                                "${BrowserModule.ERROR_URL}. Error message: ${e.message ?: "Error in Open Browser function"}"
                             )
                         )
                     )

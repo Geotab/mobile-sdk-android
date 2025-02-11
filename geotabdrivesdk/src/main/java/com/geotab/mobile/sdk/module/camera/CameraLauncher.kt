@@ -1,6 +1,7 @@
 package com.geotab.mobile.sdk.module.camera
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraManager
 import android.net.Uri
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -40,7 +41,11 @@ class CameraLauncher(
             callback(Failure(Error(GeotabDriveError.FILE_EXCEPTION, FileSystemModule.FILESYSTEM_NOT_EXIST))); return
         }
 
-        context.packageManager.takeIf { it.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) }?.let {
+        val hasCameras =
+            context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) &&
+                getNumberOfCameras() > 0
+
+        if (hasCameras) {
             try {
                 val imageFile = imageUtil.createImageFile(fsRootUri, captureImageFunctionArgument?.fileName)
                 if (imageFile.exists()) {
@@ -82,7 +87,7 @@ class CameraLauncher(
                 )
                 return
             }
-        } ?: run {
+        } else {
             Log.e(TAG, "Device doesn't have a Camera to capture the picture")
             callback(
                 Failure(
@@ -129,6 +134,16 @@ class CameraLauncher(
         } finally {
             // delete the original
             context.contentResolver.delete(imageUri, null, null)
+        }
+    }
+
+    private fun getNumberOfCameras(): Int {
+        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        return try {
+            cameraManager.cameraIdList.size
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in getting number of cameras: ${e.stackTraceToString()}")
+            0 // return 0 if there is an exception, meaning no cameras
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.geotab.mobile.sdk.logging
 
 import android.util.Log
+import androidx.annotation.Keep
 
+@Keep
 interface Logging {
     fun debug(tag: String, message: String)
     fun info(tag: String, message: String)
@@ -10,6 +12,7 @@ interface Logging {
     fun error(tag: String, message: String, exception: Throwable)
 }
 
+@Keep
 class DefaultLogging : Logging {
     override fun debug(tag: String, message: String) {
         Log.d(tag, message)

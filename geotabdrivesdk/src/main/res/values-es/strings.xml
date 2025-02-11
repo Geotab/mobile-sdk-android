@@ -4,4 +4,6 @@
     <string name="refresh">Actualizar</string>
     <string name="errorMsg">Trate de nuevo para proseguir.</string>
     <string name="networkError">No hay conexión de red</string>
+    <string name="default_notification_channel_name">Excepciones de las reglas de MyGeotab</string>
+    <string name="default_notification_channel_desc">Canal para informar a los administradores de las excepciones a las reglas</string>
 </resources>

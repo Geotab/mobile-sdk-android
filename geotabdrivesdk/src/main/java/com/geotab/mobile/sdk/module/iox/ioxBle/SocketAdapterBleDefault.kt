@@ -189,6 +189,8 @@ class SocketAdapterBleDefault internal constructor(
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
             Log.d(TAG, "Advertising Callback onStartSuccess")
             if (state != State.Opening) return
+            // call IoxClient to return to IoxBLE for advertising success.
+            listener?.onOpen(null)
             state = State.Advertising
         }
 
@@ -327,6 +329,7 @@ class SocketAdapterBleDefault internal constructor(
             if (state != State.Connecting) return
 
             if (value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
+                // IoxUSB is listening to this call to trigger connected event
                 listener?.onOpen(null)
                 state = State.Connected
             }

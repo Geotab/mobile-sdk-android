@@ -6,4 +6,10 @@
     <string name="networkError">No Network Connection</string>
     <string name="download_error" tools:ignore="MissingTranslation">Download failed.</string>
     <string name="downloading" tools:ignore="MissingTranslation">Downloading %1$s</string>
+    <string name="default_notification_channel_id" tools:ignore="MissingTranslation">RulesViolationChannel</string>
+    <string name="default_notification_channel_name">MyGeotab rule exceptions</string>
+    <string name="default_notification_channel_desc">Channel for informing admins of rule exceptions</string>
+    <string name="notif_permission_title" tools:ignore="MissingTranslation">Notification Permissions</string>
+    <string name="notif_permission_body" tools:ignore="MissingTranslation">MyGeotab uses push notifications to provide you with timely alerts and also to send important messages.</string>
+    <string name="notif_permission_button_text" tools:ignore="MissingTranslation">Continue</string>
 </resources>

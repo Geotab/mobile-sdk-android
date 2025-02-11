@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.4_73503"
+val versionName = "6.7.3_73516"
 
 plugins {
     id("com.android.library")
@@ -8,7 +8,7 @@ plugins {
     id("org.jetbrains.dokka") version "1.8.10"
     id("maven-publish")
     id("kotlin-parcelize")
-    id("com.google.devtools.ksp") version "1.7.20-1.0.8"
+    id("com.google.devtools.ksp")
 }
 
 apply {
@@ -17,6 +17,7 @@ apply {
 
 android {
     compileSdk = 34
+    namespace = "com.geotab.mobile.sdk"
 
     defaultConfig {
         minSdk = 24
@@ -60,6 +61,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     tasks {
@@ -106,6 +108,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     lint {
         abortOnError = true
         ignore += listOf("GradleDependency", "ObsoleteLintCustomCheck")
@@ -117,6 +120,7 @@ android {
 dependencies {
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:1.8.10")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.0.3")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.1")
@@ -124,16 +128,16 @@ dependencies {
     implementation("com.github.spullara.mustache.java:compiler:0.8.18")
     implementation("androidx.fragment:fragment-ktx:1.4.0-alpha07")
     implementation("androidx.lifecycle:lifecycle-common:2.5.1")
-    debugImplementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
+    implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
     debugImplementation("androidx.fragment:fragment-testing:1.6.0-alpha04")
-    implementation("com.google.code.gson:gson:2.9.0")
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation ("androidx.room:room-runtime:2.5.2")
     implementation("androidx.room:room-ktx:2.5.2")
     annotationProcessor("androidx.room:room-compiler:2.5.2")
-    ksp("androidx.room:room-compiler:2.5.2")
+    ksp("androidx.room:room-compiler:2.6.1")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlin:kotlin-test:1.7.0")
-    testImplementation("io.mockk:mockk:1.13.3")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
+    testImplementation("io.mockk:mockk:1.12.3")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2-native-mt")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.31")
@@ -197,7 +201,10 @@ tasks.register<Copy>("copyTestFiles") {
 }
 
 afterEvaluate {
-    tasks.named("javaPreCompileDebugUnitTest") {
+    tasks.named("processDebugUnitTestJavaRes") {
+        dependsOn("copyTestFiles")
+    }
+    tasks.named("processReleaseUnitTestJavaRes") {
         dependsOn("copyTestFiles")
     }
 }

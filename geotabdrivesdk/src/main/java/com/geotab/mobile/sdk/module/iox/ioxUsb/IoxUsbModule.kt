@@ -47,10 +47,10 @@ class IoxUsbModule(
         ioxClient.stop()
     }
 
-    override fun onStart(exception: Error?) {
-        if (exception == null) {
+    override fun onStart(state: GeotabIoxClient.State, exception: Error?) {
+        if (exception == null && state == GeotabIoxClient.State.Connected) {
             push(ModuleEvent(IOX_CONNECTION, IOX_ATTACHED)) {}
-        } else {
+        } else if (exception != null) {
             Log.e(TAG, "Iox Client failed to start ${exception.getErrorCode()}", exception)
         }
     }

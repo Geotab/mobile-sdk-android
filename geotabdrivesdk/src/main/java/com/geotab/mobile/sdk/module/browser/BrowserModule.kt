@@ -17,7 +17,7 @@ class BrowserModule(
         const val templateFileName = "BrowserModule.Script.js"
         const val openFunctionName = "openBrowserWindow"
         const val closeFunctionName = "closeBrowserWindow"
-        const val ERROR_GETTING_MAPS_APP_IN_DEVICE = "No Google Play Services or maps apps installed in the device"
+        const val ERROR_URL = "Error trying to open the url"
         const val BROWSER_TAG = "BROWSER"
         const val MODULE_NAME = "browser"
     }
