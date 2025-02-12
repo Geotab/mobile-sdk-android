@@ -1,9 +1,11 @@
 package com.geotab.mobile.sdk.permission
 
 import android.os.Parcelable
+import androidx.annotation.Keep
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
+@Keep
 enum class Permission(val request: String) : Parcelable {
     LOCATION("android.permission.ACCESS_FINE_LOCATION"),
     LOCATION_COARSE("android.permission.ACCESS_COARSE_LOCATION"),

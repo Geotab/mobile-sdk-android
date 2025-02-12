@@ -8,7 +8,7 @@ import androidx.annotation.Keep
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSIONS_ASKED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_GRANTED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_RESPONSE
-import com.geotab.mobile.sdk.util.parcelableArrayList
+import com.geotab.mobile.sdk.util.parcelableArrayListExtra
 
 @Keep
 data class PermissionAttribute(
@@ -33,7 +33,7 @@ class PermissionResultContract : ActivityResultContract<PermissionAttribute, Per
                 }
             }
         } else {
-            val permissionsBeingAsked = intent?.extras?.parcelableArrayList<Permission>(PERMISSIONS_ASKED) ?: arrayListOf()
+            val permissionsBeingAsked = intent?.parcelableArrayListExtra<Permission>(PERMISSIONS_ASKED) ?: arrayListOf()
             permissionAttribute = PermissionAttribute(
                 permissions = permissionsBeingAsked,
                 result = false,

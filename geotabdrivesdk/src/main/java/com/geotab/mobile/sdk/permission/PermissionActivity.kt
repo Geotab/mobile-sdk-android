@@ -10,7 +10,7 @@ import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSIONS_A
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_DENIED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_GRANTED
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSION_RESPONSE
-import com.geotab.mobile.sdk.util.parcelableArrayList
+import com.geotab.mobile.sdk.util.parcelableArrayListExtra
 
 class PermissionActivity : AppCompatActivity() {
     private var permissions: ArrayList<Permission> = arrayListOf()
@@ -39,12 +39,14 @@ class PermissionActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val permissionList = intent.parcelableArrayListExtra<Permission>(PERMISSION_EXTRA) ?: emptyList()
 
-        val permissionList = intent.extras?.parcelableArrayList<Permission>(PERMISSION_EXTRA)
-
-        permissionList?.let {
-            this.permissions = ArrayList(permissionList)
+        if (permissionList.isEmpty()) {
+            finish()
+            return
         }
+
+        this.permissions = ArrayList(permissionList)
         askPermissions.launch(permissions.map { it.request }.toTypedArray())
     }
 }

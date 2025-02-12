@@ -94,7 +94,12 @@ class ConnectivityModule(
     }
 
     private fun stateJson(online: Boolean): String {
-        val state = ConnectivityState(online, getNetworkType().toString())
+        val networkType = if (online) {
+            getNetworkType()
+        } else {
+            ConnectivityType.NONE
+        }
+        val state = ConnectivityState(online, networkType.toString())
         return JsonUtil.toJson(state)
     }
 

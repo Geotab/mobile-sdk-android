@@ -15,12 +15,15 @@ import android.os.Build.VERSION_CODES.TIRAMISU
 import android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 import android.os.Bundle
 import android.os.Parcelable
+import androidx.core.content.IntentCompat
+import androidx.core.os.BundleCompat
 import java.io.Serializable
 
-inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): ArrayList<T>? = when {
-    SDK_INT >= TIRAMISU -> getParcelableArrayList(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableArrayList(key)
-}
+inline fun <reified T : Parcelable> Intent.parcelableArrayListExtra(key: String): ArrayList<T>? =
+    IntentCompat.getParcelableArrayListExtra(this, key, T::class.java)
+
+inline fun <reified T : Parcelable> Bundle.parcelableArrayList(key: String): ArrayList<T>? =
+    BundleCompat.getParcelableArrayList(this, key, T::class.java)
 
 inline fun PackageManager.installedPackages(flag: Int): List<PackageInfo> = when {
     SDK_INT >= TIRAMISU -> getInstalledPackages(PackageManager.PackageInfoFlags.of(flag.toLong()))
