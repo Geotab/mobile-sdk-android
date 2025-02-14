@@ -105,6 +105,7 @@ class DriveFragment :
     ModuleContainerDelegate,
     NetworkErrorDelegate {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
+    private val alphaVersionString = "alpha"
 
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
@@ -418,7 +419,7 @@ class DriveFragment :
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() {
 
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG || getString(R.string.app_flavor) == alphaVersionString) {
             WebView.setWebContentsDebuggingEnabled(true)
         }
 
