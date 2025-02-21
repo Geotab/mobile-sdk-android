@@ -32,7 +32,6 @@ import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.util.JsonUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.geotab.mobile.sdk.util.regReceiver
-import com.geotab.mobile.sdk.util.serializable
 import java.net.MalformedURLException
 import java.net.URL
 
@@ -67,14 +66,14 @@ class BrowserFragment : Fragment() {
         fun newInstance(url: String): BrowserFragment =
             BrowserFragment().apply {
                 arguments = Bundle().apply {
-                    putSerializable(ARG_URL, url)
+                    putString(ARG_URL, url)
                 }
             }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let { bundle -> url = bundle.serializable<String>(ARG_URL) }
+        arguments?.let { bundle -> url = bundle.getString(ARG_URL) }
     }
 
     override fun onCreateView(
@@ -232,7 +231,7 @@ class BrowserFragment : Fragment() {
         samlCallback?.invoke(Failure(Error(GeotabDriveError.MODULE_SAML_ERROR, error)))
     }
 
-    private fun closeFragment() {
+    internal fun closeFragment() {
         if (!parentFragmentManager.isStateSaved) {
             parentFragmentManager.popBackStack()
         }
