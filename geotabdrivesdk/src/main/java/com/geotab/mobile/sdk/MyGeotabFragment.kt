@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.print.PrintAttributes
 import android.print.PrintManager
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -343,7 +344,15 @@ class MyGeotabFragment :
             cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
             setSupportMultipleWindows(true)
-            userAgentString = userAgentUtil.getUserAgent(webView.settings.userAgentString)
+            userAgentString = if (getString(R.string.app_flavor) != alphaVersionString) {
+                userAgentUtil.getUserAgent(webView.settings.userAgentString)
+            } else {
+                Log.i(
+                    TAG,
+                    "UserAgent: ${userAgentUtil.getUserAgent(webView.settings.userAgentString)}"
+                )
+                userAgentUtil.getUserAgent(webView.settings.userAgentString).replace("; wv", "")
+            }
         }
 
         cookieManager.setAcceptThirdPartyCookies(this.webView, MyGeotabConfig.allowThirdPartyCookies)

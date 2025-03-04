@@ -780,6 +780,7 @@ class DriveFragment :
             callback(Failure(Error(GeotabDriveError.NO_CONTEXT)))
         }
     }
+
     private fun moveAppToBackground() {
         requireActivity().moveTaskToBack(true)
     }
