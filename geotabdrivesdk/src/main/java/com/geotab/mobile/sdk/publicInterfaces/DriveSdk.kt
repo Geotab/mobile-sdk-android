@@ -56,6 +56,18 @@ interface DriveSdk {
     fun getOpenCabAvailability(version: String, callback: (Result<Success<String>, Failure>) -> Unit)
 
     /**
+     * Returns the active driver's duty status log
+     * @return Json string with the duty status log
+     */
+    fun getDutyStatusLog(userName: String, callback: (Result<Success<String>, Failure>) -> Unit)
+
+    /**
+     * Returns the active driver's current driving log
+     * @return Json string with the driving log
+     */
+    fun getCurrentDrivingLog(userName: String, callback: (Result<Success<String>, Failure>) -> Unit)
+
+    /**
      * - set the vehicle's active driver to the driver id provided.
      * - only works with driverId that are logged in
      * - tries to perform a Set API call, or updates local database if offline

@@ -43,6 +43,7 @@ import com.geotab.mobile.sdk.module.camera.GetPictureAttribute
 import com.geotab.mobile.sdk.module.camera.TakePictureContract
 import com.geotab.mobile.sdk.module.connectivity.ConnectivityModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
+import com.geotab.mobile.sdk.module.dutyStatusLog.DutyStatusLogModule
 import com.geotab.mobile.sdk.module.fileSystem.FileSystemModule
 import com.geotab.mobile.sdk.module.geolocation.GeolocationModule
 import com.geotab.mobile.sdk.module.iox.ioxBle.IoxBleModule
@@ -59,6 +60,8 @@ import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.state.DeviceFunction
 import com.geotab.mobile.sdk.module.state.StateModule
 import com.geotab.mobile.sdk.module.user.DriverActionNecessaryCallbackType
+import com.geotab.mobile.sdk.module.dutyStatusLog.GetDutyStatusLogFunction
+import com.geotab.mobile.sdk.module.dutyStatusLog.GetCurrentDrivingLogFunction
 import com.geotab.mobile.sdk.module.user.GetAllUsersFunction
 import com.geotab.mobile.sdk.module.user.GetAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetHosRuleSetFunction
@@ -176,6 +179,9 @@ class DriveFragment :
     private val userModule: UserModule by lazy {
         UserModule()
     }
+    private val dutyStatusLogModule: DutyStatusLogModule by lazy {
+        DutyStatusLogModule()
+    }
     private val startForPermissionResult = registerForActivityResult(PermissionResultContract()) {
         it.callback(it.result)
 
@@ -239,6 +245,7 @@ class DriveFragment :
             deviceModule,
             activity?.let { ScreenModule(it) },
             userModule,
+            dutyStatusLogModule,
             StateModule(),
             speechModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
@@ -589,6 +596,26 @@ class DriveFragment :
         callback: (Result<Success<String>, Failure>) -> Unit
     ) {
         (findModuleFunction(UserModule.MODULE_NAME, "getAvailability") as? GetAvailabilityFunction)?.let {
+            it.userName = userName
+            functionCall(callback, it)
+        }
+    }
+
+    override fun getDutyStatusLog(
+        userName: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
+        (findModuleFunction(DutyStatusLogModule.MODULE_NAME, "getDutyStatusLog") as? GetDutyStatusLogFunction)?.let {
+            it.userName = userName
+            functionCall(callback, it)
+        }
+    }
+
+    override fun getCurrentDrivingLog(
+        userName: String,
+        callback: (Result<Success<String>, Failure>) -> Unit
+    ) {
+        (findModuleFunction(DutyStatusLogModule.MODULE_NAME, "getCurrentDrivingLog") as? GetCurrentDrivingLogFunction)?.let {
             it.userName = userName
             functionCall(callback, it)
         }
