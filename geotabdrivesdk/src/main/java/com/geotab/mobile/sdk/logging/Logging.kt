@@ -35,6 +35,7 @@ class DefaultLogging : Logging {
     }
 }
 
+@Keep
 object Logger {
     var shared: Logging = DefaultLogging()
 }
