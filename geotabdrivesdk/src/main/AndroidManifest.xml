@@ -73,7 +73,7 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_provider_paths" />
+                android:resource="@xml/geotab_file_provider_paths" />
         </provider>
 
         <meta-data
