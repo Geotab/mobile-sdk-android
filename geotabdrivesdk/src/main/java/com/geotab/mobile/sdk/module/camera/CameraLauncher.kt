@@ -57,7 +57,7 @@ class CameraLauncher(
                 // Specify file so that image is captured and returned
                 imageUri = FileProvider.getUriForFile(
                     context,
-                    "$applicationId.provider",
+                    "$applicationId.geotab.provider",
                     photo
                 )
                 cameraDelegate.takePictureResult(imageUri) { result ->

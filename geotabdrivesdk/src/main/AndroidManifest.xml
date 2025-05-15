@@ -67,8 +67,8 @@
             android:exported="false" />
 
         <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
+            android:name="com.geotab.mobile.sdk.GeotabFileProvider"
+            android:authorities="${applicationId}.geotab.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
