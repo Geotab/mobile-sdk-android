@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.7_74223"
+val versionName = "6.7.7_74279"
 
 plugins {
     id("com.android.library")
@@ -9,6 +9,7 @@ plugins {
     id("maven-publish")
     id("kotlin-parcelize")
     id("com.google.devtools.ksp")
+    id ("org.jetbrains.kotlinx.kover")
 }
 
 apply {
@@ -191,6 +192,13 @@ publishing {
                         dependencyNode.appendNode("version", dependency.version)
                     }
             }
+        }
+    }
+}
+kover {
+    currentProject {
+        createVariant("custom") {
+            addWithDependencies("debug")
         }
     }
 }
