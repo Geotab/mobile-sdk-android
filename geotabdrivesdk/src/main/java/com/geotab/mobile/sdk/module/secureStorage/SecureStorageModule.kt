@@ -16,6 +16,8 @@ class SecureStorageModule(val context: Context) : Module(MODULE_NAME), Coroutine
         const val ERROR_GETTING_VALUE = "Key not exists in storage"
         const val ERROR_REMOVING_ALL = "Nothing to clear"
         const val ERROR_REMOVING_KEY = "Error in removing from storage"
+        const val ERROR_KEY_EMPTY = "Key cannot be null or empty"
+        const val ERROR_VALUE_EMPTY = "Value cannot be null or empty"
     }
 
     private val fsExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()

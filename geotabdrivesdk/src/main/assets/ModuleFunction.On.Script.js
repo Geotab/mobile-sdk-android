@@ -31,11 +31,18 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (eventName, callback)
       });
     };
   }
-  // eslint-disable-next-line no-undef
-  {{interfaceName}}.postMessage(
-    '{{moduleName}}',
-    '{{functionName}}',
-    JSON.stringify({ result: Object.keys(mod.onListeners) }),
-    'window.{{geotabModules}}.{{moduleName}}.___onCallback'
-  );
+  try {
+    // eslint-disable-next-line no-undef
+    {{interfaceName}}.postMessage(
+      '{{moduleName}}',
+      '{{functionName}}',
+      JSON.stringify({ result: Object.keys(mod.onListeners) }),
+      'window.{{geotabModules}}.{{moduleName}}.___onCallback'
+    );
+  } catch (err) {
+    console.log(
+      '>>>>> Unexpected exception in JavascriptInterface callback: ',
+      err.message
+    );
+  }
 };
