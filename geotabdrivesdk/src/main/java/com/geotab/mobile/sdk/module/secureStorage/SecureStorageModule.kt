@@ -10,7 +10,9 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
-class SecureStorageModule(val context: Context) : Module(MODULE_NAME), CoroutineScope {
+class SecureStorageModule(
+    val context: Context
+) : Module(MODULE_NAME), CoroutineScope {
     companion object {
         const val MODULE_NAME = "secureStorage"
         const val ERROR_GETTING_VALUE = "Key not exists in storage"

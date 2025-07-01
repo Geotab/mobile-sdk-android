@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.7_74437"
+val versionName = "6.7.7_74476"
 
 plugins {
     id("com.android.library")
@@ -31,6 +31,9 @@ android {
 
         buildConfigField("String", "KEYSTORE_ALIAS", "\"" +  System.getenv("KEYSTORE_ALIAS") + "\"")
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
+
+        manifestPlaceholders["appLinkHost"] = ""
+        manifestPlaceholders["appAuthRedirectPathPrefix"] = ""
     }
 
     buildTypes {
@@ -122,6 +125,7 @@ dependencies {
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:1.8.10")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("net.openid:appauth:0.11.1")
     implementation("androidx.constraintlayout:constraintlayout:2.0.3")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.1")

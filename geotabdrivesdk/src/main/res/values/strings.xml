@@ -13,4 +13,5 @@
     <string name="notif_permission_body" tools:ignore="MissingTranslation">MyGeotab uses push notifications to provide you with timely alerts and also to send important messages.</string>
     <string name="notif_permission_button_text" tools:ignore="MissingTranslation">Continue</string>
     <string name="app_flavor" translatable="false">default</string>
+    <string name="geotab_login_redirect_scheme" translatable="false">login_redirect_scheme</string>
 </resources>

@@ -88,7 +88,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.openid.appauth.BuildConfig
 import org.json.JSONObject
+import com.geotab.mobile.sdk.module.login.LoginModule
 
 // fragment initialization parameters
 private const val ARG_MODULES = "modules"
@@ -235,7 +237,14 @@ class DriveFragment :
     }
 
     private val ssoModule: SSOModule by lazy {
-        SSOModule(this.parentFragmentManager, appPreferences)
+        SSOModule(
+            this.parentFragmentManager,
+            appPreferences
+        )
+    }
+
+    private val loginModule: LoginModule by lazy {
+        LoginModule(requireContext())
     }
 
     private val secureStorageModule: SecureStorageModule by lazy {
@@ -301,9 +310,15 @@ class DriveFragment :
         arguments?.let { bundle ->
             initializeModules((bundle.serializable<ArrayList<*>>(ARG_MODULES))?.filterIsInstance<Module>())
         }
-        activity?.let { it.onBackPressedDispatcher.addCallback(onBackPressedCallback) }
+        activity?.onBackPressedDispatcher?.addCallback(onBackPressedCallback)
         contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
         contentController.setAppCallBack(onBackPressedCallback)
+
+        if (getString(R.string.app_flavor) == alphaVersionString) {
+            with(loginModule) {
+                initValues(this@DriveFragment)
+            }
+        }
     }
 
     override fun onCreateView(
@@ -373,6 +388,10 @@ class DriveFragment :
         ioxUsbModule.stop()
 
         appModule.stopForegroundService()
+
+        if (getString(R.string.app_flavor) == alphaVersionString) {
+            loginModule.disposeAuthService()
+        }
     }
 
     override fun onDestroyView() {
@@ -422,6 +441,9 @@ class DriveFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
+        if (getString(R.string.app_flavor) == alphaVersionString) {
+            this.modules.add(loginModule)
+        }
         logger.info(TAG, "modules initialized")
     }
 

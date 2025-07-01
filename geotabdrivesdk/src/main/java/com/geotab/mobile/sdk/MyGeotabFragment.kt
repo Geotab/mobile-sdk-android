@@ -27,6 +27,7 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
+import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
@@ -39,6 +40,7 @@ import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.geotab.mobile.sdk.util.serializable
 import com.github.mustachejava.DefaultMustacheFactory
+import net.openid.appauth.BuildConfig
 import org.json.JSONObject
 
 // fragment initialization parameters
@@ -53,6 +55,7 @@ class MyGeotabFragment :
     MyGeotabSdk {
     private var _binding: FragmentGeotabDriveSdkBinding? = null
     private val alphaVersionString = "alpha"
+
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
@@ -65,20 +68,21 @@ class MyGeotabFragment :
         PushScriptUtil()
     }
 
-    val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit = { moduleEvent, callBack ->
-        val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
+    val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit =
+        { moduleEvent, callBack ->
+            val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
 
-        if (validEvent) {
-            val script = """
+            if (validEvent) {
+                val script = """
             window.dispatchEvent(new CustomEvent("${moduleEvent.event}", ${moduleEvent.params}));
         """
-            this.webView.post {
-                this.webView.evaluateJavascript(script) {}
-            }
+                this.webView.post {
+                    this.webView.evaluateJavascript(script) {}
+                }
 
-            callBack(Success(""))
+                callBack(Success(""))
+            }
         }
-    }
 
     private val goBack = {
         if (webView.canGoBack()) {
@@ -98,6 +102,10 @@ class MyGeotabFragment :
 
     private val ssoModule: SSOModule by lazy {
         SSOModule(this.parentFragmentManager, appPreferences)
+    }
+
+    private val loginModule: LoginModule by lazy {
+        LoginModule(requireContext())
     }
 
     private val cookieManager: CookieManager by lazy {
@@ -201,11 +209,19 @@ class MyGeotabFragment :
         super.onCreate(savedInstanceState)
         Module.mustacheFactory = mustacheFactory
         arguments?.let { bundle ->
-            initializeModules(bundle.serializable<ArrayList<*>>(ARG_MODULES)?.filterIsInstance<Module>())
+            initializeModules(
+                bundle.serializable<ArrayList<*>>(ARG_MODULES)?.filterIsInstance<Module>()
+            )
         }
-        activity?.let { it.onBackPressedDispatcher.addCallback(onBackPressedCallback) }
+        activity?.onBackPressedDispatcher?.addCallback(onBackPressedCallback)
         contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
         contentController.setAppCallBack(onBackPressedCallback)
+
+        if (getString(R.string.app_flavor) == alphaVersionString) {
+            with(loginModule) {
+                initValues(this@MyGeotabFragment)
+            }
+        }
     }
 
     override fun onAttach(context: Context) {
@@ -304,6 +320,7 @@ class MyGeotabFragment :
                         ) {}
                     }
                 }
+
                 is Failure -> {
                     this.webView.post {
                         this.webView.evaluateJavascript(
@@ -328,7 +345,9 @@ class MyGeotabFragment :
         if (modules != null) {
             this.modules = ArrayList(modules)
         }
-
+        if (getString(R.string.app_flavor) == alphaVersionString) {
+            this.modules.add(loginModule)
+        }
         this.modules.addAll(modulesInternal.filterNotNull())
     }
 
@@ -355,7 +374,10 @@ class MyGeotabFragment :
             }
         }
 
-        cookieManager.setAcceptThirdPartyCookies(this.webView, MyGeotabConfig.allowThirdPartyCookies)
+        cookieManager.setAcceptThirdPartyCookies(
+            this.webView,
+            MyGeotabConfig.allowThirdPartyCookies
+        )
     }
 
     private fun configureWebViewScript(webViewClientUserContentController: WebViewClientUserContentController) {
@@ -404,6 +426,10 @@ class MyGeotabFragment :
             webView.removeAllViews()
         }
         webView.destroy()
+
+        if (getString(R.string.app_flavor) == alphaVersionString) {
+            loginModule.disposeAuthService()
+        }
     }
 
     override fun onDestroyView() {

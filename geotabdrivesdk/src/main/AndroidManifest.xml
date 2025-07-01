@@ -51,6 +51,12 @@
                 android:resource="@xml/accessory_filter" />
         </activity>
 
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            tools:node="replace">
+        </activity>
         <service
             android:name="com.geotab.mobile.sdk.module.app.ForeGroundService"
             android:foregroundServiceType="specialUse"
