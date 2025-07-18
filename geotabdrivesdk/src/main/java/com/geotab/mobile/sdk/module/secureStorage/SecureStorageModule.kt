@@ -10,16 +10,12 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
-class SecureStorageModule(
-    val context: Context
-) : Module(MODULE_NAME), CoroutineScope {
+class SecureStorageModule(val context: Context) : Module(MODULE_NAME), CoroutineScope {
     companion object {
         const val MODULE_NAME = "secureStorage"
         const val ERROR_GETTING_VALUE = "Key not exists in storage"
         const val ERROR_REMOVING_ALL = "Nothing to clear"
         const val ERROR_REMOVING_KEY = "Error in removing from storage"
-        const val ERROR_KEY_EMPTY = "Key cannot be null or empty"
-        const val ERROR_VALUE_EMPTY = "Value cannot be null or empty"
     }
 
     private val fsExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()

@@ -2,6 +2,7 @@ package com.geotab.mobile.sdk.module.browser
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.annotation.Keep
 import androidx.fragment.app.FragmentManager
 import com.geotab.mobile.sdk.Error
@@ -19,7 +20,6 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
-import androidx.core.net.toUri
 
 enum class HtmlTarget(val target: String) {
     Blank("_blank"),
@@ -91,7 +91,7 @@ class OpenBrowserWindowFunction(
             true -> {
                 try {
                     val defaultBrowser = Intent(Intent.ACTION_VIEW)
-                    defaultBrowser.data = url.toUri()
+                    defaultBrowser.data = Uri.parse(url)
                     context.startActivity(defaultBrowser)
                     jsCallback(Success("\"$url\""))
                 } catch (e: Exception) {

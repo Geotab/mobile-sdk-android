@@ -2,7 +2,6 @@ package com.geotab.mobile.sdk.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.core.content.edit
 import com.geotab.mobile.sdk.models.NativeNotify
 import com.geotab.mobile.sdk.util.JsonUtil
 import com.google.gson.JsonSyntaxException
@@ -33,12 +32,12 @@ class PreferenceNotificationRepository(val context: Context, val name: String) :
      * @param notification Local notification to save
      */
     override fun persist(notification: NativeNotify) {
-        prefs.edit {
-            putString(
-                notification.id.toString(),
-                JsonUtil.toJson(notification)
-            )
-        }
+        val editor = prefs.edit()
+        editor.putString(
+            notification.id.toString(),
+            JsonUtil.toJson(notification)
+        )
+        editor.apply()
     }
 
     /**
@@ -46,9 +45,9 @@ class PreferenceNotificationRepository(val context: Context, val name: String) :
      * @param notificationId Local notification id to delete.
      */
     override fun unPersist(notificationId: String) {
-        prefs.edit {
-            remove(notificationId)
-        }
+        val editor = prefs.edit()
+        editor.remove(notificationId)
+        editor.apply()
     }
 
     /**

@@ -84,14 +84,6 @@ class WebViewChromeClient(
                 )
             }
         }
-            // Leaving this as a fallback in case PermissionHelper is null for any reason
-            // like memory leak or not initialized properly.
-            // In case of null, we assume the user has not granted permissions
-            ?: callback?.invoke(
-                origin,
-                false,
-                false
-            )
     }
 
     override fun onShowFileChooser(

@@ -76,7 +76,6 @@ import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.permission.PermissionAttribute
 import com.geotab.mobile.sdk.permission.PermissionDelegate
-import com.geotab.mobile.sdk.permission.PermissionHelper
 import com.geotab.mobile.sdk.permission.PermissionResultContract
 import com.geotab.mobile.sdk.publicInterfaces.DriveSdk
 import com.geotab.mobile.sdk.publicInterfaces.SpeechEngine
@@ -88,7 +87,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.openid.appauth.BuildConfig
 import org.json.JSONObject
 
 // fragment initialization parameters
@@ -236,10 +234,7 @@ class DriveFragment :
     }
 
     private val ssoModule: SSOModule by lazy {
-        SSOModule(
-            this.parentFragmentManager,
-            appPreferences
-        )
+        SSOModule(this.parentFragmentManager, appPreferences)
     }
 
     private val secureStorageModule: SecureStorageModule by lazy {
@@ -305,7 +300,7 @@ class DriveFragment :
         arguments?.let { bundle ->
             initializeModules((bundle.serializable<ArrayList<*>>(ARG_MODULES))?.filterIsInstance<Module>())
         }
-        activity?.onBackPressedDispatcher?.addCallback(onBackPressedCallback)
+        activity?.let { it.onBackPressedDispatcher.addCallback(onBackPressedCallback) }
         contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
         contentController.setAppCallBack(onBackPressedCallback)
     }
@@ -368,7 +363,6 @@ class DriveFragment :
                 (webView.parent as ViewGroup).removeView(webView)
                 webView.removeAllViews()
             }
-            webView.removeJavascriptInterface(Module.interfaceName)
             webView.destroy()
         }
 
@@ -480,12 +474,7 @@ class DriveFragment :
         this.webView?.addJavascriptInterface(this, Module.interfaceName)
         this.webView?.webViewClient = webViewClientUserContentController
         isWebViewConfigured = true
-        this.webView?.webChromeClient = context?.let {
-            WebViewChromeClient(
-                PermissionHelper(it, this),
-                FileChooserHelper(this)
-            )
-        }
+        this.webView?.webChromeClient = WebViewChromeClient(fileChooserHelper = FileChooserHelper(this))
     }
 
     @JavascriptInterface
@@ -495,18 +484,12 @@ class DriveFragment :
             val params: String? =
                 if (jsonObject.isNull("result")) null else jsonObject.getString("result")
             val moduleFunction = findModuleFunction(name, function)
-            if (moduleFunction == null) {
-                buildErrorJavaScript(callback, Error(GeotabDriveError.JS_ISSUED_ERROR, "Module function not found for $name, $function"))
-            } else {
-                callModuleFunction(moduleFunction, callback, params)
-            }
+            moduleFunction?.let { callModuleFunction(it, callback, params) }
         } catch (e: Exception) {
             val crashLocation = " in module $name, function $function with params $result."
             val crashMessage = e.message ?: "Unknown JS exception occurred"
 
             InternalAppLogging.appLogger?.error(TAG, crashMessage + crashLocation)
-            // callback needs to be removed, after accumulating will lead to JNI errors
-            buildErrorJavaScript(callback, Error(GeotabDriveError.JS_ISSUED_ERROR, crashMessage))
         }
     }
 
@@ -547,47 +530,47 @@ class DriveFragment :
         webAppLoadFailed?.invoke()
     }
 
-    private fun buildSuccessJavaScript(callback: String, value: String): String {
-        return """
-        try {
-            var t = $callback(null, $value);
-            if (t instanceof Promise) {
-                t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
-            }
-        } catch(err) {
-            console.log(">>>>> Unexpected exception in callback: ", err);
-        }
-        """.trimIndent()
-    }
-
-    private fun buildErrorJavaScript(callback: String, reason: Error): String {
-        val errorMessage = "${reason.getErrorCode()}: ${reason.getErrorMessage()}"
-        return """
-        try {
-            var t = $callback(new Error(`$errorMessage`));
-            if (t instanceof Promise) {
-                t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
-            }
-        } catch(err) {
-            console.log(">>>>> Unexpected exception in callback: ", err);
-        }
-        """.trimIndent()
-    }
-
     private fun callModuleFunction(
         moduleFunction: ModuleFunction,
         callback: String,
         params: String?
     ) {
         moduleFunction.handleJavascriptCall(params) { result ->
-            val jsScript = when (result) {
-                is Success -> buildSuccessJavaScript(callback, result.value)
+            when (result) {
+                is Success -> {
+                    this.webView?.post {
+                        this.webView?.evaluateJavascript(
+                            """
+                            try {
+                                var t = $callback(null, ${result.value});
+                                if (t instanceof Promise) {
+                                    t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                                }
+                            } catch(err) {
+                                console.log(">>>>> Unexpected exception: ", err);
+                            }
+                            """.trimIndent()
+                        ) {}
+                    }
+                }
                 is Failure -> {
-                    logger.error(TAG, "module function call failed, ${result.reason}, $moduleFunction")
-                    buildErrorJavaScript(callback, result.reason)
+                    logger.error(TAG, "module function call failed")
+                    this.webView?.post {
+                        this.webView?.evaluateJavascript(
+                            """
+                            try {
+                                var t = $callback(new Error(`${result.reason.getErrorCode()}: ${result.reason.getErrorMessage()}`));
+                                if (t instanceof Promise) {
+                                    t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                                }
+                            } catch(err) {
+                                console.log(">>>>> Unexpected exception: ", err);
+                            }
+                            """.trimIndent()
+                        ) {}
+                    }
                 }
             }
-            evaluate(jsScript) {}
         }
     }
 

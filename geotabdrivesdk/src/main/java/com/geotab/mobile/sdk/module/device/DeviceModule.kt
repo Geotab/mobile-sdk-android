@@ -27,7 +27,7 @@ class DeviceModule(
             "moduleName" to name,
             "devicePlatform" to device.platform,
             "deviceManufacturer" to device.manufacturer,
-            "version" to device.sdkVersion,
+            "version" to userAgentUtil.version,
             "appId" to device.appId,
             "appName" to userAgentUtil.appName,
             "sdkVersion" to device.sdkVersion,

@@ -15,12 +15,11 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.max
-import androidx.core.net.toUri
 
 class FileUtils(val context: Context, private val uri: UriWrapper? = null) {
     fun validatePath(uriString: String, isFile: Boolean = true): String? {
 
-        val pathUri = uri?.parse(uriString) ?: uriString.toUri()
+        val pathUri = uri?.parse(uriString) ?: Uri.parse(uriString)
 
         val path = pathUri.path ?: return null
 
@@ -37,7 +36,7 @@ class FileUtils(val context: Context, private val uri: UriWrapper? = null) {
 
     fun validatePath(uriString: String, isFile: Boolean = true, rootUri: Uri): File? {
 
-        val pathUri = uri?.parse(uriString) ?: uriString.toUri()
+        val pathUri = uri?.parse(uriString) ?: Uri.parse(uriString)
 
         val path = pathUri.path ?: return null
 
@@ -59,7 +58,7 @@ class FileUtils(val context: Context, private val uri: UriWrapper? = null) {
     }
 
     fun getUriPath(pathStr: String): String? {
-        val pathUri = uri?.parse(pathStr) ?: pathStr.toUri()
+        val pathUri = uri?.parse(pathStr) ?: Uri.parse(pathStr)
 
         return pathUri.path
     }

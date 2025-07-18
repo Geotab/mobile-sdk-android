@@ -25,18 +25,11 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (eventName, callback)
   if (mod.___offCallback == null) {
     mod.___offCallback = () => {};
   }
-  try {
-    // eslint-disable-next-line no-undef
-    {{interfaceName}}.postMessage(
-      '{{moduleName}}',
-      '{{functionName}}',
-      JSON.stringify({ result: Object.keys(mod.onListeners) }),
-      'window.{{geotabModules}}.{{moduleName}}.___offCallback'
-    );
-  } catch (err) {
-    console.log(
-      '>>>>> Unexpected exception in JavascriptInterface callback: ',
-      err.message
-    );
-  }
+  // eslint-disable-next-line no-undef
+  {{interfaceName}}.postMessage(
+    '{{moduleName}}',
+    '{{functionName}}',
+    JSON.stringify({ result: Object.keys(mod.onListeners) }),
+    'window.{{geotabModules}}.{{moduleName}}.___offCallback'
+  );
 };

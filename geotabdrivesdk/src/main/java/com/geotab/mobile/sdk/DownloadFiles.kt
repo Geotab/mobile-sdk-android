@@ -3,6 +3,7 @@ package com.geotab.mobile.sdk
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.util.Base64
@@ -12,7 +13,6 @@ import android.webkit.JavascriptInterface
 import android.webkit.URLUtil
 import android.widget.Toast
 import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import com.geotab.mobile.sdk.permission.Permission
 import com.geotab.mobile.sdk.permission.PermissionDelegate
 import com.geotab.mobile.sdk.permission.PermissionHelper
@@ -61,7 +61,7 @@ class DownloadFiles(
     ) {
         try {
             val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType)
-            val downloadUri = url?.toUri()
+            val downloadUri = Uri.parse(url)
             if (url?.startsWith("blob:https") == true) {
                 blobToBase64(url, mimeType, fileName)
                 return
