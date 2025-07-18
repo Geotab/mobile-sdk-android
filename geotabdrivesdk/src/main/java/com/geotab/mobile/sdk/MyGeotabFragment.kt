@@ -27,7 +27,6 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
-import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
@@ -102,10 +101,6 @@ class MyGeotabFragment :
 
     private val ssoModule: SSOModule by lazy {
         SSOModule(this.parentFragmentManager, appPreferences)
-    }
-
-    private val loginModule: LoginModule by lazy {
-        LoginModule(requireContext())
     }
 
     private val cookieManager: CookieManager by lazy {
@@ -216,12 +211,6 @@ class MyGeotabFragment :
         activity?.onBackPressedDispatcher?.addCallback(onBackPressedCallback)
         contentController.setWebViewCallBack(webViewModule?.onBackPressedCallback)
         contentController.setAppCallBack(onBackPressedCallback)
-
-        if (getString(R.string.app_flavor) == alphaVersionString) {
-            with(loginModule) {
-                initValues(this@MyGeotabFragment)
-            }
-        }
     }
 
     override fun onAttach(context: Context) {
@@ -345,9 +334,6 @@ class MyGeotabFragment :
         if (modules != null) {
             this.modules = ArrayList(modules)
         }
-        if (getString(R.string.app_flavor) == alphaVersionString) {
-            this.modules.add(loginModule)
-        }
         this.modules.addAll(modulesInternal.filterNotNull())
     }
 
@@ -426,10 +412,6 @@ class MyGeotabFragment :
             webView.removeAllViews()
         }
         webView.destroy()
-
-        if (getString(R.string.app_flavor) == alphaVersionString) {
-            loginModule.disposeAuthService()
-        }
     }
 
     override fun onDestroyView() {

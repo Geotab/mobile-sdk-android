@@ -18,6 +18,8 @@ import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
+import androidx.core.graphics.scale
+import androidx.core.net.toUri
 
 /**
  * Helper class to evaluate image files
@@ -123,11 +125,9 @@ class ImageUtil(val context: Context) {
                 if (size != null) {
                     val aspectWidthHeight = calculateAspectRatio(originalBitmapOptions, size)
                     println("calculate aspect ratio: $aspectWidthHeight")
-                    bitmap = Bitmap.createScaledBitmap(
-                        bitmap,
+                    bitmap = bitmap.scale(
                         (aspectWidthHeight.first * scaleFactor).toInt(),
-                        (aspectWidthHeight.second * scaleFactor).toInt(),
-                        true
+                        (aspectWidthHeight.second * scaleFactor).toInt()
                     )
                     copyBitmapToUri(scaledUri, bitmap)
                 } else if (scaleFactor == 1.0F && rotation == 0F) {
@@ -138,11 +138,9 @@ class ImageUtil(val context: Context) {
                     copyImageFromUri(srcUri, scaledUri)
                     return scaledUri
                 } else {
-                    bitmap = Bitmap.createScaledBitmap(
-                        bitmap,
+                    bitmap = bitmap.scale(
                         (bitmap.width * scaleFactor).toInt(),
-                        (bitmap.height * scaleFactor).toInt(),
-                        true
+                        (bitmap.height * scaleFactor).toInt()
                     )
                     copyBitmapToUri(scaledUri, bitmap)
                 }
@@ -312,7 +310,7 @@ class ImageUtil(val context: Context) {
     }
 
     private fun getInputStreamFromUriString(uriString: String): InputStream? {
-        val uri = Uri.parse(uriString)
+        val uri = uriString.toUri()
         return context.contentResolver.openInputStream(uri)
     }
 }

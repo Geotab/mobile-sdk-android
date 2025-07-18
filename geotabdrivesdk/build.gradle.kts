@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.7_74476"
+val versionName = "6.7.7_74683"
 
 plugins {
     id("com.android.library")
@@ -213,6 +213,9 @@ tasks.register<Copy>("copyTestFiles") {
 }
 
 afterEvaluate {
+    tasks.named("testReleaseUnitTest") {
+        enabled = false // This will disable it from running in all cases, including via 'check'
+    }
     tasks.named("processDebugUnitTestJavaRes") {
         dependsOn("copyTestFiles")
     }

@@ -3,6 +3,7 @@ package com.geotab.mobile.sdk.models
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
+import androidx.core.content.edit
 import com.geotab.mobile.sdk.BuildConfig
 import java.util.UUID
 
@@ -18,10 +19,10 @@ data class Device(
         get() {
             var uuid = preferences.getString(UUID_KEY, null)
             if (uuid == null) {
-                val editor = preferences.edit()
                 uuid = UUID.randomUUID().toString()
-                editor.putString(UUID_KEY, uuid)
-                editor.apply()
+                preferences.edit {
+                    putString(UUID_KEY, uuid)
+                }
             }
             return uuid
         }
