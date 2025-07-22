@@ -502,6 +502,26 @@ declare namespace geotabModules {
          function setStatusPiP(argument: { isEnabled: boolean }, callback: (err?: Error, result?: undefined) => void);
     }
 
+    namespace login {
+        enum GeotabAppId {
+            GEOTAB_DRIVE = 0,
+            MYGEOTAB
+        }
+
+         /*******
+         * Start the login function integrated with Chrome Custom Tabs.
+         * @param argument: { clientId: string, discoveryUri: string, geotabAppId: GeotabAppId, loginHint: string? }
+         * @param callback:
+         *      - result: string. A GeotabAuthState object.
+         *  The loginHint parameter is optional. It is used to pre-fill the username field in the login page.
+         *  On a successful call a GeotabAuthState object turned into JSON will be given as result
+         *  If there's an error while logging in, err will be given.
+         *  GeotabAuthState object contains the following properties:
+         * { accessToken: string, idToken: string, refreshToken: string }
+         */
+         function start(argument: { clientId: string, discoveryUri: string, geotabAppId: GeotabAppId, loginHint: string? }, callback: (err?: Error, result?: string) => void);
+    }
+
     namespace appearance {
         enum AppearanceType {
             Unknown = 0,

@@ -32,10 +32,14 @@ class SetItemFunction(
         module.launch(module.coroutineContext) {
             val arguments = transformOrInvalidate(jsonString, jsCallback) ?: return@launch
 
-            if (arguments.key.isBlank()) {
-                jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
+            if (arguments.key.isNullOrBlank()) {
+                jsCallback(Failure(Error(GeotabDriveError.JS_ISSUED_ERROR, SecureStorageModule.ERROR_KEY_EMPTY)))
+                return@launch
+            } else if (arguments.value.isNullOrBlank()) {
+                jsCallback(Failure(Error(GeotabDriveError.JS_ISSUED_ERROR, SecureStorageModule.ERROR_VALUE_EMPTY)))
                 return@launch
             }
+
             try {
                 val encryptedStorage = SecureStorage(
                     arguments.key,

@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.8_74690"
+val versionName = "6.7.7_74707"
 
 plugins {
     id("com.android.library")
@@ -9,6 +9,7 @@ plugins {
     id("maven-publish")
     id("kotlin-parcelize")
     id("com.google.devtools.ksp")
+    id ("org.jetbrains.kotlinx.kover")
 }
 
 apply {
@@ -30,6 +31,9 @@ android {
 
         buildConfigField("String", "KEYSTORE_ALIAS", "\"" +  System.getenv("KEYSTORE_ALIAS") + "\"")
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
+
+        manifestPlaceholders["appLinkHost"] = ""
+        manifestPlaceholders["appAuthRedirectPathPrefix"] = ""
     }
 
     buildTypes {
@@ -121,6 +125,7 @@ dependencies {
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:1.8.10")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("net.openid:appauth:0.11.1")
     implementation("androidx.constraintlayout:constraintlayout:2.0.3")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.1")
@@ -194,6 +199,13 @@ publishing {
         }
     }
 }
+kover {
+    currentProject {
+        createVariant("custom") {
+            addWithDependencies("debug")
+        }
+    }
+}
 
 tasks.register<Copy>("copyTestFiles") {
     from("src/main/assets")
@@ -201,6 +213,9 @@ tasks.register<Copy>("copyTestFiles") {
 }
 
 afterEvaluate {
+    tasks.named("testReleaseUnitTest") {
+        enabled = false // This will disable it from running in all cases, including via 'check'
+    }
     tasks.named("processDebugUnitTestJavaRes") {
         dependsOn("copyTestFiles")
     }

@@ -16,14 +16,23 @@ window.{{geotabModules}}.{{moduleName}}.{{functionName}} = (params, callback) =>
         '>>>>> User provided callback throws uncaught exception: ',
         err.message
       );
+    } finally {
+      delete window.{{geotabNativeCallbacks}}[nativeCallback];
     }
-    delete window.{{geotabNativeCallbacks}}[nativeCallback];
   };
-  // eslint-disable-next-line no-undef
-  {{interfaceName}}.postMessage(
-    '{{moduleName}}',
-    '{{functionName}}',
-    JSON.stringify({ result: options }),
-    `{{geotabNativeCallbacks}}.${nativeCallback}`
-  );
+  try {
+    // eslint-disable-next-line no-undef
+    {{interfaceName}}.postMessage(
+      '{{moduleName}}',
+      '{{functionName}}',
+      JSON.stringify({ result: options }),
+      `{{geotabNativeCallbacks}}.${nativeCallback}`
+    );
+  } catch (err) {
+    console.log(
+      '>>>>> Unexpected exception in JavascriptInterface callback: ',
+      err.message
+    );
+    delete window.{{geotabNativeCallbacks}}[nativeCallback];
+  }
 };
