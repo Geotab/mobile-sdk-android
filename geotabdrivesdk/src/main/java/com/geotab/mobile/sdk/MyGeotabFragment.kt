@@ -18,6 +18,8 @@ import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
 import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
+import com.geotab.mobile.sdk.logging.AppLogEventSource
+import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.ModuleEvent
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
@@ -243,6 +245,7 @@ class MyGeotabFragment :
 
         configureWebView()
         configureWebViewScript(contentController)
+        InternalAppLogging.setListener(AppLogEventSource(push))
     }
 
     override fun findModule(module: String): Module? {
