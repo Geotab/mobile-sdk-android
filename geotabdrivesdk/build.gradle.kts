@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.7.7_74718"
+val versionName = "6.7.7_74759"
 
 plugins {
     id("com.android.library")
@@ -34,6 +34,8 @@ android {
 
         manifestPlaceholders["appLinkHost"] = ""
         manifestPlaceholders["appAuthRedirectPathPrefix"] = ""
+        manifestPlaceholders["authScheme"] = ""
+        manifestPlaceholders["authHost"] = ""
     }
 
     buildTypes {
