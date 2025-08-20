@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.8.0_74907"
+val versionName = "6.8.0_74924"
 
 plugins {
     id("com.android.library")
@@ -36,6 +36,14 @@ android {
         manifestPlaceholders["appAuthRedirectPathPrefix"] = ""
         manifestPlaceholders["authScheme"] = ""
         manifestPlaceholders["authHost"] = ""
+    }
+
+    testOptions {
+        unitTests.all { test ->
+            test.testLogging {
+                events("passed", "skipped", "failed")
+            }
+        }
     }
 
     buildTypes {
