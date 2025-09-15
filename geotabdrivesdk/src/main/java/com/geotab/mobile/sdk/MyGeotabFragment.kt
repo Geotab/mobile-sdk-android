@@ -41,7 +41,6 @@ import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.geotab.mobile.sdk.util.serializable
 import com.github.mustachejava.DefaultMustacheFactory
-import net.openid.appauth.BuildConfig
 import org.json.JSONObject
 
 // fragment initialization parameters
