@@ -32,9 +32,12 @@ import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.logging.AppLogEventSource
+import com.geotab.mobile.sdk.models.database.AppDatabase
+import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
 import com.geotab.mobile.sdk.module.app.AppModule
 import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.appearance.AppearanceModule
+import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.battery.BatteryModule
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.camera.CameraDelegate
@@ -62,6 +65,8 @@ import com.geotab.mobile.sdk.module.state.StateModule
 import com.geotab.mobile.sdk.module.user.DriverActionNecessaryCallbackType
 import com.geotab.mobile.sdk.module.dutyStatusLog.GetDutyStatusLogFunction
 import com.geotab.mobile.sdk.module.dutyStatusLog.GetCurrentDrivingLogFunction
+import com.geotab.mobile.sdk.module.login.AuthUtil
+import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.user.GetAllUsersFunction
 import com.geotab.mobile.sdk.module.user.GetAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetHosRuleSetFunction
@@ -240,10 +245,24 @@ class DriveFragment :
             appPreferences
         )
     }
+    private val authUtil: AuthUtil by lazy {
+        AuthUtil.init(secureStorageRepository)
+    }
+
+    private var loginModule: LoginModule? = null
+    private var authModule: AuthModule? = null
+
+    private val secureStorageRepository: SecureStorageRepository by lazy {
+        SecureStorageRepository(
+            requireContext().packageName,
+            AppDatabase.getDatabase(requireContext()).secureStorageDao()
+        )
+    }
 
     private val secureStorageModule: SecureStorageModule by lazy {
-        SecureStorageModule(requireContext())
+        SecureStorageModule(secureStorageRepository)
     }
+
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
             deviceModule,
@@ -346,6 +365,24 @@ class DriveFragment :
             startForegroundService()
             driveReadyCallback()
         }
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            startTokenRefresh()
+                        }
+                    }
+                }
+            }
+            authModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                }
+            }
+        }
+
         ioxUsbModule.start()
     }
 
@@ -374,6 +411,9 @@ class DriveFragment :
         webView = null
 
         ioxUsbModule.stop()
+
+        loginModule?.dispose()
+        authModule?.dispose()
 
         appModule.stopForegroundService()
     }
@@ -425,6 +465,12 @@ class DriveFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule = LoginModule(authUtil)
+            authModule = AuthModule(authUtil)
+            loginModule?.let { this.modules.add(it) }
+            authModule?.let { this.modules.add(it) }
+        }
         logger.info(TAG, "modules initialized")
     }
 

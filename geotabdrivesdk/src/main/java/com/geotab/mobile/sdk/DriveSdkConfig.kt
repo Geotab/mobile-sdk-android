@@ -9,5 +9,6 @@ class DriveSdkConfig {
         const val apiCallTimeoutMilli = 9 * 1000L
         var serverAddress = "my.geotab.com"
         var allowThirdPartyCookies = false
+        var includeAppAuthModules = false
     }
 }

@@ -10,7 +10,6 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.util.FileUtils
-import com.geotab.mobile.sdk.util.JsonUtil
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
@@ -42,7 +41,7 @@ class ReadFileAsBinaryFunction(val context: Context, override val name: String =
                 return@launch
             }
             // check offset and size are not negative values, otherwise throw error
-            if ((fileOptions.offset?.let { it <0 } == true) || (fileOptions.size?.let { it <0 } == true)) {
+            if ((fileOptions.offset?.let { it < 0 } == true) || (fileOptions.size?.let { it < 0 } == true)) {
                 jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
                 return@launch
             }
@@ -77,17 +76,17 @@ class ReadFileAsBinaryFunction(val context: Context, override val name: String =
                 return@launch
             }
 
-            // read from file
+            var fileBytes: ByteArray? = null
             try {
-
-                fileUtils.readFile(path, rootUri, fileOptions.offset ?: 0, fileOptions.size).let {
-                    val jsonObj = JsonUtil.toJson(fileUtils.byteArraytoIntArray(it))
-                    jsCallback(Success("new Uint8Array($jsonObj).buffer"))
-                    return@launch
-                }
+                fileBytes = fileUtils.readFile(path, rootUri, fileOptions.offset ?: 0, fileOptions.size)
+                // Directly convert byte array to a JSON array string for performance.
+                val jsonArrayString = fileBytes.joinToString(separator = ",", prefix = "[", postfix = "]")
+                jsCallback(Success("new Uint8Array($jsonArrayString).buffer"))
             } catch (e: Error) {
                 jsCallback(Failure(e))
-                return@launch
+            } finally {
+                // Securely clear the byte array from memory after use.
+                fileBytes?.fill(0)
             }
         }
     }

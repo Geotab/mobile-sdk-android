@@ -16,19 +16,25 @@ import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.Keep
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
 import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
 import com.geotab.mobile.sdk.logging.AppLogEventSource
 import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.models.ModuleEvent
+import com.geotab.mobile.sdk.models.database.AppDatabase
+import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
 import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
+import com.geotab.mobile.sdk.module.login.AuthUtil
+import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
@@ -41,6 +47,9 @@ import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.geotab.mobile.sdk.util.serializable
 import com.github.mustachejava.DefaultMustacheFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 // fragment initialization parameters
@@ -117,6 +126,19 @@ class MyGeotabFragment :
 
     private val webViewModule: WebViewModule? by lazy {
         activity?.let { WebViewModule(it, goBack) }
+    }
+
+    private val authUtil: AuthUtil by lazy {
+        AuthUtil.init(secureStorageRepository)
+    }
+    private var loginModule: LoginModule? = null
+    private var authModule: AuthModule? = null
+
+    private val secureStorageRepository: SecureStorageRepository by lazy {
+        SecureStorageRepository(
+            requireContext().packageName,
+            AppDatabase.getDatabase(requireContext()).secureStorageDao()
+        )
     }
 
     private val modulesInternal: ArrayList<Module?> by lazy {
@@ -241,6 +263,23 @@ class MyGeotabFragment :
             webView.visibility = View.VISIBLE
             errorView.visibility = View.GONE
         }
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            startTokenRefresh()
+                        }
+                    }
+                }
+            }
+            authModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                }
+            }
+        }
 
         configureWebView()
         configureWebViewScript(contentController)
@@ -337,6 +376,13 @@ class MyGeotabFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
+
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule = LoginModule(authUtil)
+            authModule = AuthModule(authUtil)
+            loginModule?.let { this.modules.add(it) }
+            authModule?.let { this.modules.add(it) }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -419,6 +465,8 @@ class MyGeotabFragment :
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        loginModule?.dispose()
+        authModule?.dispose()
     }
 
     private fun moveAppToBackground() {

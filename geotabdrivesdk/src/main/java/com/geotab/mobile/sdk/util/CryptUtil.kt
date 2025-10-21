@@ -2,7 +2,8 @@ package com.geotab.mobile.sdk.util
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import java.nio.charset.Charset
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -46,11 +47,35 @@ internal fun createSecretKey(alias: String): SecretKey {
 }
 
 internal fun encryptText(alias: String, value: String): ByteArray {
+    val valueBytes = value.toByteArray(StandardCharsets.UTF_8)
+    try {
+        val cipher = getCipher()
+        cipher.init(Cipher.ENCRYPT_MODE, getSecretKey(alias))
+        val iv = cipher.iv
+        val encryptedText = cipher.doFinal(valueBytes)
+        return iv + encryptedText
+    } finally {
+        // Clear sensitive data from memory
+        valueBytes.fill(0)
+    }
+}
+
+internal fun decryptTextToChars(alias: String, encryptedText: ByteArray): CharArray {
+    val params = GCMParameterSpec(GCM_TAG_BIT_LENGTH, encryptedText, 0, IV_LENGTH)
     val cipher = getCipher()
-    cipher.init(Cipher.ENCRYPT_MODE, getSecretKey(alias))
-    val iv = cipher.iv
-    val encryptedText = cipher.doFinal(value.toByteArray(Charset.defaultCharset()))
-    return iv + encryptedText
+    cipher.init(Cipher.DECRYPT_MODE, getSecretKey(alias), params)
+    val resultBytes = cipher.doFinal(encryptedText, IV_LENGTH, encryptedText.size - IV_LENGTH)
+
+    val charBuffer = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(resultBytes))
+    val decryptedChars = CharArray(charBuffer.remaining())
+    charBuffer.get(decryptedChars)
+    // Clear the intermediate byte array containing the decrypted data.
+    resultBytes.fill(0)
+    charBuffer.rewind() // Rewind to the beginning
+    while (charBuffer.hasRemaining()) {
+        charBuffer.put('\u0000') // Overwrite with null characters
+    }
+    return decryptedChars
 }
 
 internal fun decryptText(alias: String, encryptedText: ByteArray): String {
@@ -58,5 +83,8 @@ internal fun decryptText(alias: String, encryptedText: ByteArray): String {
     val cipher = getCipher()
     cipher.init(Cipher.DECRYPT_MODE, getSecretKey(alias), params)
     val result = cipher.doFinal(encryptedText, IV_LENGTH, encryptedText.size - IV_LENGTH)
-    return String(result, Charset.defaultCharset())
+    val decryptedString = String(result, StandardCharsets.UTF_8)
+    // Clear sensitive data from memory
+    result.fill(0)
+    return decryptedString
 }
