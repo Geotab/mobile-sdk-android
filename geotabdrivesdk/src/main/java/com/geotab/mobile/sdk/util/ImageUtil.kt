@@ -171,20 +171,18 @@ class ImageUtil(val context: Context) {
     }
 
     private fun copyImageFromUri(fromUri: Uri, toUri: Uri) {
-        val buffer = ByteArray(8 * 1024)
-        try {
-            context.contentResolver.openOutputStream(toUri)?.use { oStream ->
-                context.contentResolver.openInputStream(fromUri)?.use { iStream ->
-                    // Transfer bytes from in to out
-                    var bytesRead: Int
-                    while (iStream.read(buffer).also { bytesRead = it } != -1) {
-                        oStream.write(buffer, 0, bytesRead)
-                    }
+        context.contentResolver.openOutputStream(toUri)?.use { oStream ->
+            context.contentResolver.openInputStream(fromUri)?.use { iStream ->
+                // Transfer bytes from in to out
+                val buffer = ByteArray(8 * 1024)
+                var bytesRead = iStream.read(buffer)
+                while (bytesRead != -1) {
+                    oStream.write(buffer, 0, bytesRead)
+                    bytesRead = iStream.read(buffer)
                 }
+                iStream.close()
             }
-        } finally {
-            // Securely clear the buffer after use to prevent sensitive data from lingering in memory.
-            buffer.fill(0)
+            oStream.close()
         }
     }
 

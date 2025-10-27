@@ -1,5 +1,8 @@
 package com.geotab.mobile.sdk.module.secureStorage
 
+import android.content.Context
+import com.geotab.mobile.sdk.BuildConfig
+import com.geotab.mobile.sdk.models.database.AppDatabase
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
 import com.geotab.mobile.sdk.module.Module
 import kotlinx.coroutines.CoroutineScope
@@ -8,7 +11,7 @@ import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
 class SecureStorageModule(
-    repository: SecureStorageRepository
+    val context: Context
 ) : Module(MODULE_NAME), CoroutineScope {
     companion object {
         const val MODULE_NAME = "secureStorage"
@@ -21,6 +24,10 @@ class SecureStorageModule(
 
     private val fsExecutor = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     private val fsContext: CoroutineScope = CoroutineScope(fsExecutor)
+    private val repository by lazy {
+        SecureStorageRepository(AppDatabase.getDatabase(context).secureStorageDao())
+    }
+    val keyAlias = context.applicationInfo.packageName + "." + BuildConfig.KEYSTORE_ALIAS
 
     init {
         functions.add(SetItemFunction(module = this, secureStorageRepository = repository))

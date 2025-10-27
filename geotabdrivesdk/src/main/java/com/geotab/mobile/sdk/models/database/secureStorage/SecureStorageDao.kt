@@ -8,20 +8,20 @@ import androidx.room.Query
 @Dao
 interface SecureStorageDao {
     @Query("SELECT COUNT(localKey) FROM secureStorage")
-    suspend fun length(): Int
+    fun length(): Int
 
     @Query("SELECT localKey FROM secureStorage")
-    suspend fun getKeys(): List<String>
+    fun getKeys(): List<String>
 
     @Query("SELECT localValue as value FROM secureStorage Where localKey = :key")
-    suspend fun getValue(key: String): ByteArray?
+    fun getValue(key: String): ByteArray?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdate(secureStorage: SecureStorage)
+    fun insertOrUpdate(secureStorage: SecureStorage)
 
     @Query("DELETE FROM secureStorage Where localKey = :key")
-    suspend fun deleteKey(key: String): Int
+    fun deleteKey(key: String): Int
 
     @Query("DELETE FROM secureStorage")
-    suspend fun deleteAll(): Int
+    fun deleteAll(): Int
 }
