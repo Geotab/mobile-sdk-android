@@ -50,11 +50,11 @@
                 android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED"
                 android:resource="@xml/accessory_filter" />
         </activity>
-
+        <!-- This implementation is needed for consumers of the SDK have the option to not include the
+             RedirectUriReceiverActivity in their app if they don't use SSO login.-->
         <activity
             android:name="net.openid.appauth.RedirectUriReceiverActivity"
             android:exported="true"
-            android:taskAffinity=""
             tools:node="replace">
         </activity>
         <service

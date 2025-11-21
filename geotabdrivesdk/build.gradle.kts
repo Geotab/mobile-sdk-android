@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.8.1_75323"
+val versionName = "6.8.1_75411"
 
 plugins {
     id("com.android.library")
@@ -16,24 +16,34 @@ apply {
     from("./../kotlin-lint.gradle.kts")
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
 android {
     compileSdk = 34
     namespace = "com.geotab.mobile.sdk"
 
     defaultConfig {
         minSdk = 24
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-        }
+
 
         buildConfigField("String", "KEYSTORE_ALIAS", "\"" +  System.getenv("KEYSTORE_ALIAS") + "\"")
         buildConfigField("String", "VERSION_NAME", "\"${versionName}\"")
 
         manifestPlaceholders["appLinkHost"] = ""
         manifestPlaceholders["appAuthRedirectPathPrefix"] = ""
+        manifestPlaceholders["authScheme"] = ""
+        manifestPlaceholders["authHost"] = ""
+    }
+
+    testOptions {
+        unitTests.all { test ->
+            test.testLogging {
+                events("passed", "skipped", "failed")
+            }
+        }
     }
 
     buildTypes {
@@ -125,25 +135,32 @@ dependencies {
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:1.8.10")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.12.0")
-    implementation("net.openid:appauth:0.11.1")
+    // This implementation is needed for consumers of the SDK have the option to not include the
+    // RedirectUriReceiverActivity in their app if they don't use SSO login.
+    api("net.openid:appauth:0.11.1")
+    // Optional Sentry dependency for logging integration
+    compileOnly("io.sentry:sentry-android:8.25.0")
     implementation("androidx.constraintlayout:constraintlayout:2.0.3")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2-native-mt")
     implementation("com.github.spullara.mustache.java:compiler:0.8.18")
     implementation("androidx.fragment:fragment-ktx:1.4.0-alpha07")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    testImplementation("androidx.work:work-testing:2.9.0")
     implementation("androidx.lifecycle:lifecycle-common:2.5.1")
     implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
-    debugImplementation("androidx.fragment:fragment-testing:1.6.0-alpha04")
     implementation("com.google.code.gson:gson:2.11.0")
-    implementation ("androidx.room:room-runtime:2.5.2")
-    implementation("androidx.room:room-ktx:2.5.2")
-    annotationProcessor("androidx.room:room-compiler:2.5.2")
+    api ("androidx.room:room-runtime:2.6.1")
+    api("androidx.room:room-ktx:2.6.1")
+    annotationProcessor("androidx.room:room-compiler:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
     testImplementation("io.mockk:mockk:1.12.3")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
+    testImplementation("org.robolectric:robolectric:4.10.3")
+    testImplementation ("org.json:json:20231013")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2-native-mt")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.31")
     androidTestImplementation("androidx.test:core:1.5.0")

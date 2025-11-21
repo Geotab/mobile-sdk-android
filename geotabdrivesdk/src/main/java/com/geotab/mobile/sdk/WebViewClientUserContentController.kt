@@ -12,7 +12,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
-import com.geotab.mobile.sdk.logging.InternalAppLogging
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.interfaces.WebViewClientController
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 
@@ -46,7 +46,7 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
                 } else {
                     "System killed the WebView rendering process to reclaim memory."
                 }
-            InternalAppLogging.appLogger?.error(
+            Logger.shared.error(
                 TAG,
                 crashMessage
             )
@@ -69,7 +69,7 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
 
     override fun onPageFinished(view: WebView?, url: String?) {
         view?.let { webView ->
-            webView.evaluateJavascript(moduleScripts) {}
+            webView.evaluateJavascript(moduleScripts, null)
             webViewOnBackPressedCallback?.isEnabled = webView.canGoBack()
             appOnBackPressedCallback?.isEnabled = !webView.canGoBack()
         }
@@ -84,7 +84,7 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
                 view.context.startActivity(intent)
                 return true
             } catch (e: Exception) {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     TAG,
                     "Error navigating to URL with scheme $urlScheme from WebView context."
                 )

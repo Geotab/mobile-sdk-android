@@ -9,7 +9,6 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.util.JsonUtil
-import com.geotab.mobile.sdk.util.decryptText
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
@@ -29,9 +28,10 @@ class GetItemFunction(
                 return@launch
             }
 
+            var result: CharArray? = null
             try {
-                val byteResult = secureStorageRepository.getValue(arguments)
-                if (byteResult == null) {
+                result = secureStorageRepository.getValueChars(arguments)
+                if (result == null) {
                     jsCallback(
                         Failure(
                             Error(
@@ -42,11 +42,13 @@ class GetItemFunction(
                     )
                     return@launch
                 }
-                val result = decryptText(module.keyAlias, byteResult)
-                jsCallback(Success(JsonUtil.toJson(result)))
+
+                jsCallback(Success(JsonUtil.toJson(String(result))))
             } catch (e: Exception) {
                 jsCallback(Failure(Error(GeotabDriveError.STORAGE_MODULE_ERROR, e.message)))
                 return@launch
+            } finally {
+                result?.fill('\u0000')
             }
         }
     }

@@ -2,23 +2,16 @@ package com.geotab.mobile.sdk.module.login
 
 import android.content.Context
 import android.net.Uri
-import android.os.Parcelable
 import androidx.activity.ComponentActivity
-import androidx.work.WorkManager
-import com.geotab.mobile.sdk.logging.InternalAppLogging
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.auth.AuthToken
+import com.geotab.mobile.sdk.module.auth.AuthUtil
 import kotlinx.coroutines.runBlocking
-import kotlinx.parcelize.Parcelize
 import net.openid.appauth.AuthorizationService
-
-@Parcelize
-data class GeotabAuthState(
-    val authState: String,
-    val username: String
-) : Parcelable
 
 class LoginModule(
     @Transient private val authUtil: AuthUtil
@@ -36,7 +29,6 @@ class LoginModule(
 
     init {
         functions.add(StartFunction(module = this))
-        functions.add(GetAuthTokenFunction(module = this))
     }
 
     fun initValues(activity: ComponentActivity) {
@@ -55,6 +47,7 @@ class LoginModule(
         redirectScheme: Uri,
         loginFunctionCallback: (Result<Success<String>, Failure>) -> Unit
     ) {
+        Logger.shared.info(TAG, "login function was called")
         if (isAuthServiceDisposed) {
             authUtil.authService = AuthorizationService(context)
         }
@@ -62,39 +55,17 @@ class LoginModule(
         authUtil.login(
             clientId = clientId,
             discoveryUri = discoveryUri,
-            loginHint = loginHint,
+            username = loginHint,
             redirectScheme = redirectScheme,
+            comingFromLoginModule = true,
             loginCallback = loginFunctionCallback
         ).also {
             isAuthServiceDisposed = true
         }
     }
 
-    fun dispose() {
-        TokenRefreshWorker.cancelAllTokenRefreshWork(context)
-        authUtil.authService?.dispose()
-    }
-
-    suspend fun startTokenRefresh() {
-        val workManager = WorkManager.getInstance(context)
-        try {
-            // Get all stored user tokens
-            val allTokens = authUtil.getAllTokens()
-            // Iterate and cancel existing work, then schedule new work
-            allTokens.forEach { geotabAuthState ->
-                val workName = TokenRefreshWorker.getUniqueWorkName(geotabAuthState.username)
-                workManager.cancelUniqueWork(workName)
-                authUtil.getValidAccessToken(context, geotabAuthState.username, forceRefresh = true)
-            }
-        } catch (e: Exception) {
-            InternalAppLogging.appLogger?.error(
-                TAG,
-                "Error starting token refresh: ${e.message}"
-            )
-        }
-    }
-
     fun handleAuthToken(username: String): AuthToken? {
+        Logger.shared.info(TAG, "handleAuthToken function was called")
         val authToken = runBlocking {
             val token = authUtil.getValidAccessToken(context, username)
             token

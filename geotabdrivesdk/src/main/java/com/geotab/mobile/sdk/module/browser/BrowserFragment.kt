@@ -23,7 +23,7 @@ import com.geotab.mobile.sdk.BuildConfig
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.R
 import com.geotab.mobile.sdk.databinding.ActivityBrowserBinding
-import com.geotab.mobile.sdk.logging.InternalAppLogging
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
@@ -128,7 +128,7 @@ class BrowserFragment : Fragment() {
             userAgentString = if (isUserAgentKillSwitchOn) {
                 userAgentUtil.getUserAgent(webView.settings.userAgentString)
             } else {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     TAG,
                     "UserAgent: ${userAgentUtil.getUserAgent(webView.settings.userAgentString)}"
                 )

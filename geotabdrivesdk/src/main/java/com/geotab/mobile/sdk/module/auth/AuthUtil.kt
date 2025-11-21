@@ -1,9 +1,10 @@
-package com.geotab.mobile.sdk.module.login
+package com.geotab.mobile.sdk.module.auth
 
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Parcelable
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,12 +12,14 @@ import androidx.annotation.Keep
 import androidx.annotation.VisibleForTesting
 import androidx.work.WorkManager
 import com.geotab.mobile.sdk.Error
-import com.geotab.mobile.sdk.logging.InternalAppLogging
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.login.LoginModule
+import com.geotab.mobile.sdk.module.login.TokenRefreshWorker
 import com.geotab.mobile.sdk.util.JsonUtil
 import java.io.BufferedWriter
 import java.io.IOException
@@ -44,11 +47,20 @@ import net.openid.appauth.ResponseTypeValues
 import net.openid.appauth.TokenRequest
 import net.openid.appauth.TokenResponse
 import java.io.CharArrayReader
+import kotlinx.parcelize.Parcelize
 
 @Keep
 data class AuthToken(
-    val accessToken: String
+    val accessToken: String,
+    val refreshToken: String? = null,
+    val idToken: String? = null
 )
+
+@Parcelize
+data class GeotabAuthState(
+    val authState: String,
+    val username: String
+) : Parcelable
 
 class AuthUtil(
     private val getValueChars: suspend (String) -> CharArray?,
@@ -63,6 +75,9 @@ class AuthUtil(
     private var logoutCallback: ((Result<Success<String>, Failure>) -> Unit)? = null
     var authService: AuthorizationService? = null
     private var authState: AuthState? = null
+
+    // TODO: When LoginModule is removed, we can remove this flag as well
+    private var isFromLoginModule = false
 
     companion object {
         private const val TAG = "AuthUtil"
@@ -121,12 +136,14 @@ class AuthUtil(
     fun login(
         clientId: String,
         discoveryUri: Uri,
-        loginHint: String,
+        username: String,
         redirectScheme: Uri,
+        comingFromLoginModule: Boolean = false,
         loginCallback: ((Result<Success<String>, Failure>) -> Unit)?
     ) {
         this.loginCallback = loginCallback
         authScope.launch {
+            isFromLoginModule = comingFromLoginModule
             try {
                 val serviceConfiguration = fetchFromUrlSuspend(discoveryUri)
 
@@ -137,8 +154,8 @@ class AuthUtil(
                     redirectScheme
                 )
                     .setScope("openid profile email")
-                    .setLoginHint(loginHint)
-                    .setState(loginHint)
+                    .setLoginHint(username)
+                    .setState(username)
                     .build()
 
                 authService?.let { authService ->
@@ -169,7 +186,7 @@ class AuthUtil(
             if (authState == null) {
                 logoutCallback?.let {
                     val message = "No valid token found for user $username"
-                    InternalAppLogging.appLogger?.error(TAG, message)
+                    Logger.shared.error(TAG, message)
                     it(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, jsonUtil.toJson(message))))
                 }
                 return@withContext
@@ -220,7 +237,7 @@ class AuthUtil(
                     rescheduleTokenRefreshWorker(context, username)
                 }
             } catch (ex: Exception) {
-                InternalAppLogging.appLogger?.error(TAG, "Exception on refresh: ${ex.message}")
+                Logger.shared.error(TAG, "Exception on refresh: ${ex.message}")
                 deleteToken(context, username)
                 authState = null
                 return@withContext null
@@ -274,7 +291,7 @@ class AuthUtil(
         errorMessage: String,
         callback: ((Result<Success<String>, Failure>) -> Unit)? = loginCallback
     ) {
-        InternalAppLogging.appLogger?.error(
+        Logger.shared.error(
             TAG,
             errorMessage
         )
@@ -302,7 +319,17 @@ class AuthUtil(
         authState?.update(tokenResponse, null)
 
         loginCallback?.let {
-            val authToken = AuthToken(accessToken = tokenResponse.accessToken ?: "")
+            // TODO: When LoginModule is removed, we can remove this check
+            val authToken = if (isFromLoginModule) {
+                AuthToken(
+                    accessToken = tokenResponse.accessToken ?: "",
+                    refreshToken = tokenResponse.refreshToken ?: "",
+                    idToken = tokenResponse.idToken ?: ""
+                )
+            } else {
+                AuthToken(accessToken = tokenResponse.accessToken ?: "")
+            }
+
             it(Success(JsonUtil.toJson(authToken)))
         }
 
@@ -320,7 +347,7 @@ class AuthUtil(
         try {
             val tokensList = getAllTokens()
             val geotabAuthState = getCredentialsFromUsername(username, tokensList) ?: run {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     TAG,
                     "No auth state found for user"
                 )
@@ -332,7 +359,7 @@ class AuthUtil(
 
             authState = AuthState.jsonDeserialize(geotabAuthState.authState)
         } catch (e: Exception) {
-            InternalAppLogging.appLogger?.error(
+            Logger.shared.error(
                 TAG,
                 "Error fetching auth state: ${e.message ?: "Unknown error"}"
             )
@@ -397,7 +424,7 @@ class AuthUtil(
             insertOrUpdate(AUTH_TOKENS, geotabAuthStateChars)
             cancelScheduleNextRefreshToken(context, username)
         } catch (e: Exception) {
-            InternalAppLogging.appLogger?.error(
+            Logger.shared.error(
                 TAG,
                 "Error deleting auth token: ${e.message ?: "Unknown error"}"
             )
@@ -430,7 +457,7 @@ class AuthUtil(
             try {
                 JsonUtil.fromJson<MutableList<GeotabAuthState>>(CharArrayReader(allTokensChars))
             } catch (e: Exception) {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     "AuthUtil.getAllTokens",
                     "Error parsing auth tokens JSON: ${e.message ?: "Unknown error"}"
                 )
@@ -468,7 +495,7 @@ class AuthUtil(
 
         if (config == null || redirectUri == null || idToken == null) {
             authState = null
-            InternalAppLogging.appLogger?.error(TAG, "No valid configuration, redirect URI, or ID token found in logout flow")
+            Logger.shared.error(TAG, "No valid configuration, redirect URI, or ID token found in logout flow")
             return
         }
 
@@ -490,7 +517,7 @@ class AuthUtil(
 
             logoutCallback?.let {
                 val message = "Successfully logged out"
-                InternalAppLogging.appLogger?.info(TAG, message)
+                Logger.shared.info(TAG, message)
                 it(Success(jsonUtil.toJson(message)))
             }
         } catch (ex: Exception) {
@@ -512,18 +539,18 @@ class AuthUtil(
         val revocationEndpoint = try {
             discoveryDoc?.docJson?.getString("revocation_endpoint")
         } catch (e: Exception) {
-            InternalAppLogging.appLogger?.error(TAG, "No 'revocation_endpoint' found in discovery document.", e)
+            Logger.shared.error(TAG, "No 'revocation_endpoint' found in discovery document.", e)
             null
         }
 
         if (revocationEndpoint.isNullOrEmpty()) {
-            InternalAppLogging.appLogger?.error(TAG, "Authorization server configuration does not support token revocation.")
+            Logger.shared.error(TAG, "Authorization server configuration does not support token revocation.")
             return
         }
 
         val tokenToRevoke = authState?.refreshToken ?: authState?.accessToken
         if (tokenToRevoke == null) {
-            InternalAppLogging.appLogger?.debug(TAG, "No valid token available to revoke.")
+            Logger.shared.debug(TAG, "No valid token available to revoke.")
             return
         }
 
@@ -536,7 +563,7 @@ class AuthUtil(
 
             val clientId = authState?.lastAuthorizationResponse?.request?.clientId
             if (clientId.isNullOrEmpty()) {
-                InternalAppLogging.appLogger?.error(TAG, "Client ID is missing, cannot perform revocation.")
+                Logger.shared.error(TAG, "Client ID is missing, cannot perform revocation.")
                 return
             }
 
@@ -547,13 +574,38 @@ class AuthUtil(
             writer.flush()
             writer.close()
 
-            InternalAppLogging.appLogger?.info(TAG, "Token revocation response code: ${connection.responseCode}")
+            Logger.shared.info(TAG, "Token revocation response code: ${connection.responseCode}")
         } catch (e: IOException) {
-            InternalAppLogging.appLogger?.error(TAG, "Network error during token revocation.", e)
+            Logger.shared.error(TAG, "Network error during token revocation.", e)
         } catch (e: Exception) {
-            InternalAppLogging.appLogger?.error(TAG, "An unexpected error occurred during token revocation.", e)
+            Logger.shared.error(TAG, "An unexpected error occurred during token revocation.", e)
         } finally {
             connection?.disconnect()
         }
+    }
+
+    suspend fun startTokenRefresh(context: Context) {
+        val workManager = WorkManager.getInstance(context)
+        try {
+            // Get all stored user tokens
+            val allTokens = getAllTokens()
+            // Iterate and cancel existing work, then schedule new work
+            allTokens.forEach { geotabAuthState ->
+                val workName = TokenRefreshWorker.getUniqueWorkName(geotabAuthState.username)
+                workManager.cancelUniqueWork(workName)
+                getValidAccessToken(context, geotabAuthState.username, forceRefresh = true)
+            }
+        } catch (e: Exception) {
+            Logger.shared.error(
+                LoginModule.Companion.TAG,
+                "Error starting token refresh: ${e.message}"
+            )
+        }
+    }
+
+    fun dispose(context: Context) {
+        TokenRefreshWorker.cancelAllTokenRefreshWork(context)
+        authService?.dispose()
+        authService = null
     }
 }

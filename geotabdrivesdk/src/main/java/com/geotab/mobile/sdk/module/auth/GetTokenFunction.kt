@@ -1,4 +1,4 @@
-package com.geotab.mobile.sdk.module.login
+package com.geotab.mobile.sdk.module.auth
 
 import androidx.annotation.Keep
 import com.geotab.mobile.sdk.Error
@@ -10,6 +10,7 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.util.JsonUtil
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 
 @Keep
@@ -17,9 +18,9 @@ data class GetAuthTokenArgument(
     val username: String
 )
 
-class GetAuthTokenFunction(
-    override val module: LoginModule,
-    override val name: String = "getAuthToken"
+class GetTokenFunction(
+    override val module: AuthModule,
+    override val name: String = "getToken"
 ) : ModuleFunction, BaseFunction<GetAuthTokenArgument>() {
     override fun handleJavascriptCall(
         jsonString: String?,
@@ -33,11 +34,13 @@ class GetAuthTokenFunction(
             return
         }
 
-        val authToken = module.handleAuthToken(arguments.username)
-        if (authToken != null) {
-            jsCallback(Success(JsonUtil.toJson(authToken)))
-        } else {
-            jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, "No auth token found for user ${arguments.username}")))
+        module.scope.launch {
+            val authToken = module.handleAuthToken(arguments.username)
+            if (authToken != null) {
+                jsCallback(Success(JsonUtil.toJson(authToken)))
+            } else {
+                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, "No auth token found for user ${arguments.username}")))
+            }
         }
     }
 

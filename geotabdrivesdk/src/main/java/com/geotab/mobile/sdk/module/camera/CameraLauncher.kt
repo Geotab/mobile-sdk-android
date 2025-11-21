@@ -7,7 +7,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.ModuleContainerDelegate
-import com.geotab.mobile.sdk.logging.InternalAppLogging
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
@@ -77,7 +77,7 @@ class CameraLauncher(
                     }
                 }
             } catch (ex: Exception) {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     TAG,
                     "Error in capturing image: ${ex.message}"
                 )

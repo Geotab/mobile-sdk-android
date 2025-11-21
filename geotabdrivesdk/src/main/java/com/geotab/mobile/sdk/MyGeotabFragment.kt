@@ -15,18 +15,24 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.Keep
-import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
 import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.ModuleEvent
+import com.geotab.mobile.sdk.models.database.AppDatabase
+import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
 import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.auth.AuthModule
+import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
+import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
@@ -39,7 +45,9 @@ import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.geotab.mobile.sdk.util.serializable
 import com.github.mustachejava.DefaultMustacheFactory
-import net.openid.appauth.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 // fragment initialization parameters
@@ -47,7 +55,7 @@ private const val ARG_MODULES = "modules"
 private const val MODULE_PREF = "MODULE_PREF"
 
 class MyGeotabFragment :
-    Fragment(),
+    BaseGeotabFragment(),
     ModuleContainerDelegate,
     NetworkErrorDelegate,
     PermissionDelegate,
@@ -76,7 +84,9 @@ class MyGeotabFragment :
             window.dispatchEvent(new CustomEvent("${moduleEvent.event}", ${moduleEvent.params}));
         """
                 this.webView.post {
-                    this.webView.evaluateJavascript(script) {}
+                    executeIfValid {
+                        this.webView.evaluateJavascript(script, null)
+                    }
                 }
 
                 callBack(Success(""))
@@ -109,6 +119,7 @@ class MyGeotabFragment :
 
     private lateinit var webView: WebView
     private lateinit var errorView: View
+    private var bigQueryLogListener: com.geotab.mobile.sdk.logging.BigQueryLogListener? = null
 
     private val deviceModule: DeviceModule by lazy {
         DeviceModule(requireContext(), preference, userAgentUtil)
@@ -117,6 +128,25 @@ class MyGeotabFragment :
     private val webViewModule: WebViewModule? by lazy {
         activity?.let { WebViewModule(it, goBack) }
     }
+
+    private val authUtil: AuthUtil by lazy {
+        AuthUtil.init(secureStorageRepository)
+    }
+    private var loginModule: LoginModule? = null
+    private var authModule: AuthModule? = null
+
+    private val secureStorageRepository: SecureStorageRepository by lazy {
+        SecureStorageRepository(
+            requireContext().packageName,
+            AppDatabase.getDatabase(requireContext()).secureStorageDao()
+        )
+    }
+
+    /**
+     * Provides access to the WebView for lifecycle-safe execution checks.
+     * Implementation of abstract method from BaseGeotabFragment.
+     */
+    override fun getWebView(): WebView? = if (::webView.isInitialized) webView else null
 
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
@@ -240,9 +270,31 @@ class MyGeotabFragment :
             webView.visibility = View.VISIBLE
             errorView.visibility = View.GONE
         }
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            authUtil.startTokenRefresh(requireContext())
+                        }
+                    }
+                }
+            }
+            authModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                }
+            }
+        }
 
         configureWebView()
         configureWebViewScript(contentController)
+        // Add BigQuery listener to the broadcaster
+        bigQueryLogListener = com.geotab.mobile.sdk.logging.BigQueryLogListener(push)
+        bigQueryLogListener?.let { listener ->
+            (Logger.shared as? com.geotab.mobile.sdk.logging.LogBroadcaster)?.addListener(listener)
+        }
     }
 
     override fun findModule(module: String): Module? {
@@ -255,7 +307,7 @@ class MyGeotabFragment :
     }
 
     @JavascriptInterface
-    fun postMessage(name: String, function: String, result: String, callback: String) {
+    fun postMessage(name: String, function: String, result: String, callback: String) = executeIfValid {
         val jsonObject = JSONObject(result)
         val params: String? =
             if (jsonObject.isNull("result")) null else jsonObject.getString("result")
@@ -295,35 +347,41 @@ class MyGeotabFragment :
             when (result) {
                 is Success -> {
                     this.webView.post {
-                        this.webView.evaluateJavascript(
-                            """
-                            try {
-                                var t = $callback(null, ${result.value});
-                                if (t instanceof Promise) {
-                                    t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                        executeIfValid {
+                            this.webView.evaluateJavascript(
+                                """
+                                try {
+                                    var t = $callback(null, ${result.value});
+                                    if (t instanceof Promise) {
+                                        t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                                    }
+                                } catch(err) {
+                                    console.log(">>>>> Unexpected exception: ", err);
                                 }
-                            } catch(err) {
-                                console.log(">>>>> Unexpected exception: ", err);
-                            }
-                            """.trimIndent()
-                        ) {}
+                                """.trimIndent(),
+                                null
+                            )
+                        }
                     }
                 }
 
                 is Failure -> {
                     this.webView.post {
-                        this.webView.evaluateJavascript(
-                            """
-                            try {
-                                var t = $callback(new Error(`${result.reason.getErrorCode()}: ${result.reason.getErrorMessage()}`));
-                                if (t instanceof Promise) {
-                                    t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                        executeIfValid {
+                            this.webView.evaluateJavascript(
+                                """
+                                try {
+                                    var t = $callback(new Error(`${result.reason.getErrorCode()}: ${result.reason.getErrorMessage()}`));
+                                    if (t instanceof Promise) {
+                                        t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                                    }
+                                } catch(err) {
+                                    console.log(">>>>> Unexpected exception: ", err);
                                 }
-                            } catch(err) {
-                                console.log(">>>>> Unexpected exception: ", err);
-                            }
-                            """.trimIndent()
-                        ) {}
+                                """.trimIndent(),
+                                null
+                            )
+                        }
                     }
                 }
             }
@@ -335,6 +393,13 @@ class MyGeotabFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
+
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule = LoginModule(authUtil)
+            authModule = AuthModule(authUtil)
+            loginModule?.let { this.modules.add(it) }
+            authModule?.let { this.modules.add(it) }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -389,8 +454,12 @@ class MyGeotabFragment :
     private val evaluate: (String, (String) -> Unit) -> Unit =
         { script: String, callback: (String) -> Unit ->
             this.webView.post {
-                this.webView.evaluateJavascript(script) {
-                    callback(it)
+                executeIfValid {
+                    this.webView.evaluateJavascript(script) { result ->
+                        executeIfValid {
+                            callback(result)
+                        }
+                    }
                 }
             }
         }
@@ -405,6 +474,13 @@ class MyGeotabFragment :
 
     override fun onDestroy() {
         super.onDestroy()
+
+        // Remove BigQuery listener to prevent memory leaks
+        bigQueryLogListener?.let { listener ->
+            (Logger.shared as? com.geotab.mobile.sdk.logging.LogBroadcaster)?.removeListener(listener)
+        }
+        bigQueryLogListener = null
+
         if (webView.parent != null) {
             (webView.parent as ViewGroup).removeView(webView)
             webView.clearHistory()
@@ -412,6 +488,7 @@ class MyGeotabFragment :
             webView.removeAllViews()
         }
         webView.destroy()
+        authUtil.dispose(requireContext())
     }
 
     override fun onDestroyView() {

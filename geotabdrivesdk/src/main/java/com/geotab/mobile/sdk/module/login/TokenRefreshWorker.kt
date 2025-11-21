@@ -5,8 +5,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.geotab.mobile.sdk.logging.InternalAppLogging
 import androidx.work.Data
+import com.geotab.mobile.sdk.logging.Logger
+import com.geotab.mobile.sdk.module.auth.AuthUtil
 import java.util.concurrent.TimeUnit
 
 class TokenRefreshWorker(
@@ -28,7 +29,7 @@ class TokenRefreshWorker(
             username: String,
             delayMillis: Long
         ) {
-            InternalAppLogging.appLogger?.debug("TokenRefreshWorker", "scheduling token refresh")
+            Logger.shared.debug("TokenRefreshWorker", "scheduling token refresh")
             val workManager = WorkManager.getInstance(context)
             val workName = getUniqueWorkName(username)
             val inputData = Data.Builder().putString(KEY_USERNAME, username).build()
@@ -49,7 +50,7 @@ class TokenRefreshWorker(
     override suspend fun doWork(): Result {
         val username = inputData.getString(KEY_USERNAME)
             ?: return Result.failure().also {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     "TokenRefreshWorker",
                     "Username not provided in worker data"
                 )
@@ -57,7 +58,7 @@ class TokenRefreshWorker(
         val authUtil: AuthUtil = try {
             AuthUtil.getInstance()
         } catch (e: IllegalStateException) {
-            InternalAppLogging.appLogger?.error(
+            Logger.shared.error(
                 "TokenRefreshWorker",
                 "AuthUtil has not been initialized: ${e.message}"
             )
@@ -70,11 +71,11 @@ class TokenRefreshWorker(
                 forceRefresh = true,
                 startScheduler = false
             )
-            InternalAppLogging.appLogger?.debug("TokenRefreshWorker", "After fetching token")
+            Logger.shared.debug("TokenRefreshWorker", "After fetching token")
 
             if (token != null) {
                 // token successfully obtained; proceed with scheduling next refresh
-                InternalAppLogging.appLogger?.debug(
+                Logger.shared.debug(
                     "TokenRefreshWorker",
                     "Token is valid or was refreshed successfully"
                 )
@@ -82,14 +83,14 @@ class TokenRefreshWorker(
                 authUtil.scheduleNextRefreshToken(applicationContext, username)
                 Result.success()
             } else {
-                InternalAppLogging.appLogger?.error(
+                Logger.shared.error(
                     "TokenRefreshWorker",
                     "Failed to refresh token. A new login may be required."
                 )
                 Result.failure()
             }
         } catch (e: Exception) {
-            InternalAppLogging.appLogger?.error(
+            Logger.shared.error(
                 "TokenRefreshWorker",
                 "Token refresh failed with an exception: ${e.message}"
             )

@@ -503,23 +503,57 @@ declare namespace geotabModules {
     }
 
     namespace login {
-        enum GeotabAppId {
-            GEOTAB_DRIVE = 0,
-            MYGEOTAB
-        }
-
          /*******
          * Start the login function integrated with Chrome Custom Tabs.
-         * @param argument: { clientId: string, discoveryUri: string, geotabAppId: GeotabAppId, loginHint: string? }
+         * @param argument: { clientId: string, discoveryUri: string, loginHint: string }
          * @param callback:
          *      - result: string. A GeotabAuthState object.
-         *  The loginHint parameter is optional. It is used to pre-fill the username field in the login page.
+         *  The loginHint parameter is mandatory as we use it to store it as username in the SecureStorage.
+         *  It is also used to pre-fill the username field in the login page.
          *  On a successful call a GeotabAuthState object turned into JSON will be given as result
          *  If there's an error while logging in, err will be given.
          *  GeotabAuthState object contains the following properties:
-         * { accessToken: string, idToken: string, refreshToken: string }
+         * { accessToken: string }
          */
-         function start(argument: { clientId: string, discoveryUri: string, geotabAppId: GeotabAppId, loginHint: string? }, callback: (err?: Error, result?: string) => void);
+         function start(argument: { clientId: string, discoveryUri: string, loginHint: string }, callback: (err?: Error, result?: string) => void);
+    }
+
+    namespace auth {
+        /*******
+         * Start the login function integrated with Chrome Custom Tabs.
+         * @param argument: { clientId: string, discoveryUri: string, username: string }
+         * @param callback:
+         *      - result: string. A GeotabAuthState object.
+         *  The username parameter is mandatory as we use it to store it as username in the SecureStorage.
+         *  It is also used to pre-fill the username field in the login page.
+         *  On a successful call a GeotabAuthState object turned into JSON will be given as result
+         *  If there's an error while logging in, err will be given.
+         *  GeotabAuthState object contains the following properties:
+         * { accessToken: string }
+         */
+         function login(argument: { clientId: string, discoveryUri: string, username: string }, callback: (err?: Error, result?: string) => void);
+
+         /*******
+          * Start the getAuthToken function.
+          * @param argument: { username: string }
+          * @param callback:
+          *      - result: string. A GeotabAuthState object.
+          *  On a successful call a GeotabAuthState object turned into JSON will be given as result
+          *  If there's an error while retrieving the access token, err will be given.
+          *  GeotabAuthState object contains the following properties:
+          * { accessToken: string }
+          */
+          function getToken(argument: { username: string }, callback: (err?: Error, result?: string) => void);
+
+         /*******
+          * Start the logout function integrated with Chrome Custom Tabs.
+          * @param argument: { username: string }
+          * @param callback:
+          *      - result: string.
+          *  On a successful call a string will be given as result with a success message.
+          *  If there's an error while retrieving the access token, err will be given.
+          */
+          function logout(argument: { username: string }, callback: (err?: Error, result?: string) => void);
     }
 
     namespace appearance {

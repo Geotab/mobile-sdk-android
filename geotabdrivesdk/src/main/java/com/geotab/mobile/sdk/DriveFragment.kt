@@ -14,11 +14,9 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.Keep
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.geotab.mobile.sdk.databinding.FragmentGeotabDriveSdkBinding
 import com.geotab.mobile.sdk.fileChooser.FileChooserHelper
-import com.geotab.mobile.sdk.logging.InternalAppLogging
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.logging.Logging
 import com.geotab.mobile.sdk.models.ModuleEvent
@@ -31,10 +29,13 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
-import com.geotab.mobile.sdk.module.app.AppLogEventSource
+import com.geotab.mobile.sdk.models.database.AppDatabase
+import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
 import com.geotab.mobile.sdk.module.app.AppModule
 import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.appearance.AppearanceModule
+import com.geotab.mobile.sdk.module.auth.AuthModule
+import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.battery.BatteryModule
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.camera.CameraDelegate
@@ -62,6 +63,7 @@ import com.geotab.mobile.sdk.module.state.StateModule
 import com.geotab.mobile.sdk.module.user.DriverActionNecessaryCallbackType
 import com.geotab.mobile.sdk.module.dutyStatusLog.GetDutyStatusLogFunction
 import com.geotab.mobile.sdk.module.dutyStatusLog.GetCurrentDrivingLogFunction
+import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.user.GetAllUsersFunction
 import com.geotab.mobile.sdk.module.user.GetAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetHosRuleSetFunction
@@ -88,7 +90,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.openid.appauth.BuildConfig
 import org.json.JSONObject
 
 // fragment initialization parameters
@@ -102,7 +103,7 @@ const val MODULE_PREF_DRIVE = "MODULE_PREF"
  *
  */
 class DriveFragment :
-    Fragment(),
+    BaseGeotabFragment(),
     DriveSdk,
     CameraDelegate,
     PhotoLibraryDelegate,
@@ -119,6 +120,12 @@ class DriveFragment :
         PushScriptUtil()
     }
 
+    /**
+     * Provides access to the WebView for lifecycle-safe execution checks.
+     * Implementation of abstract method from BaseGeotabFragment.
+     */
+    override fun getWebView(): WebView? = webView
+
     val push: (ModuleEvent, ((Result<Success<String>, Failure>) -> Unit)) -> Unit =
         { moduleEvent, callBack ->
             val validEvent = pushScriptUtil.validEvent(moduleEvent, callBack)
@@ -129,7 +136,9 @@ class DriveFragment :
 """
 
                 this.webView?.post {
-                    this.webView?.evaluateJavascript(script) {}
+                    executeIfValid {
+                        this.webView?.evaluateJavascript(script, null)
+                    }
                 }
 
                 callBack(Success(""))
@@ -139,8 +148,13 @@ class DriveFragment :
     private val evaluate: (String, (String) -> Unit) -> Unit =
         { script: String, callback: (String) -> Unit ->
             this.webView?.post {
-                this.webView?.evaluateJavascript(script) {
-                    callback(it)
+                executeIfValid {
+                    this.webView?.evaluateJavascript(script) { result ->
+                        // Double-check lifecycle state before invoking  callback
+                        executeIfValid {
+                            callback(result)
+                        }
+                    }
                 }
             }
         }
@@ -170,6 +184,7 @@ class DriveFragment :
     }
 
     private var webView: WebView? = null
+    private var bigQueryLogListener: com.geotab.mobile.sdk.logging.BigQueryLogListener? = null
     private lateinit var errorView: View
 
     private var isWebViewConfigured: Boolean = false
@@ -189,7 +204,7 @@ class DriveFragment :
 
         if (it.wasPermissionAttributeNull) {
             Logger.shared.debug(TAG, it.permissions.toString())
-            InternalAppLogging.appLogger?.error(TAG, "Permissions being asked: ${it.permissions}")
+            Logger.shared.error(TAG, "Permissions being asked: ${it.permissions}")
         }
     }
     private val takePicture = registerForActivityResult(TakePictureContract()) {
@@ -241,10 +256,24 @@ class DriveFragment :
             appPreferences
         )
     }
+    private val authUtil: AuthUtil by lazy {
+        AuthUtil.init(secureStorageRepository)
+    }
+
+    private var loginModule: LoginModule? = null
+    private var authModule: AuthModule? = null
+
+    private val secureStorageRepository: SecureStorageRepository by lazy {
+        SecureStorageRepository(
+            requireContext().packageName,
+            AppDatabase.getDatabase(requireContext()).secureStorageDao()
+        )
+    }
 
     private val secureStorageModule: SecureStorageModule by lazy {
-        SecureStorageModule(requireContext())
+        SecureStorageModule(secureStorageRepository)
     }
+
     private val modulesInternal: ArrayList<Module?> by lazy {
         arrayListOf(
             deviceModule,
@@ -343,10 +372,32 @@ class DriveFragment :
 
         with(appModule) {
             initValues(this@DriveFragment.requireContext())
-            InternalAppLogging.setListener(AppLogEventSource(push))
+            // Add BigQuery listener to the broadcaster
+            bigQueryLogListener = com.geotab.mobile.sdk.logging.BigQueryLogListener(push)
+            bigQueryLogListener?.let { listener ->
+                (Logger.shared as? com.geotab.mobile.sdk.logging.LogBroadcaster)?.addListener(listener)
+            }
             startForegroundService()
             driveReadyCallback()
         }
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            authUtil.startTokenRefresh(requireContext())
+                        }
+                    }
+                }
+            }
+            authModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
+                }
+            }
+        }
+
         ioxUsbModule.start()
     }
 
@@ -362,21 +413,31 @@ class DriveFragment :
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         webView?.let { webView ->
-            if (webView.parent != null) {
-                (webView.parent as ViewGroup).removeView(webView)
-                webView.removeAllViews()
+            (webView.parent as? ViewGroup)?.removeView(webView)
+            webView.apply {
+                removeJavascriptInterface(Module.interfaceName)
+                removeAllViews()
+                destroy()
             }
-            webView.removeJavascriptInterface(Module.interfaceName)
-            webView.destroy()
         }
 
         webView = null
 
         ioxUsbModule.stop()
 
+        context?.let {
+            authUtil.dispose(it)
+        }
+
+        // Remove BigQuery listener to prevent memory leaks
+        bigQueryLogListener?.let { listener ->
+            (Logger.shared as? com.geotab.mobile.sdk.logging.LogBroadcaster)?.removeListener(listener)
+        }
+        bigQueryLogListener = null
+
         appModule.stopForegroundService()
+        super.onDestroy()
     }
 
     override fun onDestroyView() {
@@ -426,6 +487,12 @@ class DriveFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
+        if (DriveSdkConfig.includeAppAuthModules) {
+            loginModule = LoginModule(authUtil)
+            authModule = AuthModule(authUtil)
+            loginModule?.let { this.modules.add(it) }
+            authModule?.let { this.modules.add(it) }
+        }
         logger.info(TAG, "modules initialized")
     }
 
@@ -490,23 +557,28 @@ class DriveFragment :
 
     @JavascriptInterface
     fun postMessage(name: String, function: String, result: String, callback: String) {
-        try {
-            val jsonObject = JSONObject(result)
-            val params: String? =
-                if (jsonObject.isNull("result")) null else jsonObject.getString("result")
-            val moduleFunction = findModuleFunction(name, function)
-            if (moduleFunction == null) {
-                buildErrorJavaScript(callback, Error(GeotabDriveError.JS_ISSUED_ERROR, "Module function not found for $name, $function"))
-            } else {
-                callModuleFunction(moduleFunction, callback, params)
-            }
-        } catch (e: Exception) {
-            val crashLocation = " in module $name, function $function with params $result."
-            val crashMessage = e.message ?: "Unknown JS exception occurred"
+        executeIfValid {
+            try {
+                val jsonObject = JSONObject(result)
+                val params: String? =
+                    if (jsonObject.isNull("result")) null else jsonObject.getString("result")
+                val moduleFunction = findModuleFunction(name, function)
+                if (moduleFunction == null) {
+                    buildErrorJavaScript(callback, Error(GeotabDriveError.JS_ISSUED_ERROR, "Module function not found for $name, $function"))
+                } else {
+                    callModuleFunction(moduleFunction, callback, params)
+                }
+            } catch (e: Exception) {
+                val crashLocation = " in module $name, function $function with params $result."
+                val crashMessage = e.message ?: "Unknown JS exception occurred"
 
-            InternalAppLogging.appLogger?.error(TAG, crashMessage + crashLocation)
-            // callback needs to be removed, after accumulating will lead to JNI errors
-            buildErrorJavaScript(callback, Error(GeotabDriveError.JS_ISSUED_ERROR, crashMessage))
+                Logger.shared.error(TAG, crashMessage + crashLocation)
+                // callback needs to be removed, after accumulating will lead to JNI errors
+                buildErrorJavaScript(
+                    callback,
+                    Error(GeotabDriveError.JS_ISSUED_ERROR, crashMessage)
+                )
+            }
         }
     }
 
@@ -580,14 +652,19 @@ class DriveFragment :
         params: String?
     ) {
         moduleFunction.handleJavascriptCall(params) { result ->
-            val jsScript = when (result) {
-                is Success -> buildSuccessJavaScript(callback, result.value)
-                is Failure -> {
-                    logger.error(TAG, "module function call failed, ${result.reason}, $moduleFunction")
-                    buildErrorJavaScript(callback, result.reason)
+            executeIfValid {
+                val jsScript = when (result) {
+                    is Success -> buildSuccessJavaScript(callback, result.value)
+                    is Failure -> {
+                        logger.error(
+                            TAG,
+                            "module function call failed, ${result.reason}, $moduleFunction"
+                        )
+                        buildErrorJavaScript(callback, result.reason)
+                    }
                 }
+                evaluate(jsScript) {}
             }
-            evaluate(jsScript) {}
         }
     }
 
@@ -742,8 +819,9 @@ class DriveFragment :
             this.webView?.evaluateJavascript(
                 """
                     window.location.hash="$path";
-                """.trimIndent()
-            ) {}
+                """.trimIndent(),
+                null
+            )
             this.customUrl = null
         } else {
             this.customUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$path"

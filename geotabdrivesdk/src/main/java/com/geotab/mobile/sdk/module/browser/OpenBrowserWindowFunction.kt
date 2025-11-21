@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.annotation.Keep
 import androidx.fragment.app.FragmentManager
 import com.geotab.mobile.sdk.Error
-import com.geotab.mobile.sdk.logging.InternalAppLogging.Companion.appLogger
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.BaseFunction
 import com.geotab.mobile.sdk.module.Failure
@@ -95,7 +95,7 @@ class OpenBrowserWindowFunction(
                     context.startActivity(defaultBrowser)
                     jsCallback(Success("\"$url\""))
                 } catch (e: Exception) {
-                    appLogger?.error(
+                    Logger.shared.error(
                         TAG,
                         "Error in opening external view for $url",
                         e
