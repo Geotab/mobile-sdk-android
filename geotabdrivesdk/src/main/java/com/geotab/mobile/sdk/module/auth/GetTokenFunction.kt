@@ -35,11 +35,16 @@ class GetTokenFunction(
         }
 
         module.scope.launch {
-            val authToken = module.handleAuthToken(arguments.username)
-            if (authToken != null) {
-                jsCallback(Success(JsonUtil.toJson(authToken)))
-            } else {
-                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, "No auth token found for user ${arguments.username}")))
+            try {
+                val authToken = module.handleAuthToken(arguments.username)
+                if (authToken != null) {
+                    jsCallback(Success(JsonUtil.toJson(authToken)))
+                } else {
+                    jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, "No auth token found for user ${arguments.username}")))
+                }
+            } catch (e: Exception) {
+                com.geotab.mobile.sdk.logging.Logger.shared.error("GetTokenFunction", "Get token failed: ${e.message}", e)
+                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, e.message ?: "Get token failed")))
             }
         }
     }

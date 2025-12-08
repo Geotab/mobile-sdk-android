@@ -3,13 +3,10 @@ package com.geotab.mobile.sdk.module.auth
 import android.content.Context
 import android.net.Uri
 import androidx.activity.ComponentActivity
-import com.geotab.mobile.sdk.module.Failure
+import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.module.Module
-import com.geotab.mobile.sdk.module.Result
-import com.geotab.mobile.sdk.module.Success
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import net.openid.appauth.AuthorizationService
 
 class AuthModule(
@@ -42,41 +39,56 @@ class AuthModule(
         )
     }
 
-    fun logout(
-        username: String,
-        logoutFunctionCallback: (Result<Success<String>, Failure>) -> Unit
-    ) {
-        scope.launch {
-            authUtil.logout(
-                context = context,
-                username = username,
-                logoutCallbackFromModule = logoutFunctionCallback
-            )
-        }
+    /**
+     * Perform logout for a user.
+     *
+     * @throws Exception on failure
+     */
+    suspend fun logout(username: String) {
+        authUtil.logout(
+            context = context,
+            username = username
+        )
     }
 
-    fun login(
+    /**
+     * Perform login for a user.
+     * Matches iOS AuthModule.login() - pure suspend function with no callbacks.
+     *
+     * @return AuthToken on success
+     * @throws Exception on failure
+     */
+    suspend fun login(
         clientId: String,
         discoveryUri: Uri,
         username: String,
-        redirectScheme: Uri,
-        loginFunctionCallback: (Result<Success<String>, Failure>) -> Unit
-    ) {
+        redirectScheme: Uri
+    ): AuthToken {
         if (isAuthServiceDisposed) {
             authUtil.authService = AuthorizationService(context)
         }
 
-        authUtil.login(
-            clientId = clientId,
-            discoveryUri = discoveryUri,
-            username = username,
-            redirectScheme = redirectScheme,
-            loginCallback = loginFunctionCallback
-        ).also {
+        return try {
+            authUtil.login(
+                clientId = clientId,
+                discoveryUri = discoveryUri,
+                username = username,
+                redirectScheme = redirectScheme
+            ).also {
+                isAuthServiceDisposed = true
+            }
+        } catch (e: Exception) {
             isAuthServiceDisposed = true
+            Logger.shared.error(TAG, "Login failed: ${e.message}", e)
+            throw e
         }
     }
 
     suspend fun handleAuthToken(username: String): AuthToken? =
-        authUtil.getValidAccessToken(context, username)
+        try {
+            authUtil.getValidAccessToken(context, username)
+        } catch (e: Exception) {
+            Logger.shared.error(TAG, "Failed to get valid access token for $username: ${e.message}", e)
+            null
+        }
 }
