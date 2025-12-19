@@ -6,7 +6,7 @@ import com.geotab.mobile.sdk.BuildConfig
 
 class UserAgentUtil(context: Context) {
     private val info = context.packageManager.getApplicationInfo(context.packageName, 0)
-    private val version: String = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+    private val version: String = context.packageManager.getPackageInfo(context.packageName, 0).versionName
     val appName: String = context.packageManager.getApplicationLabel(info).toString()
     val sdkVersion: String = BuildConfig.VERSION_NAME
 

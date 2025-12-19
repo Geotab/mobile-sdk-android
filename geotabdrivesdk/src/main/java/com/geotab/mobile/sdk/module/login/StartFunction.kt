@@ -13,7 +13,6 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.login.LoginModule.Companion.LOGIN_SCHEME_ARGUMENT_ERROR_MESSAGE
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 
 @Keep
@@ -78,20 +77,13 @@ class StartFunction(
             return
         }
 
-        module.scope.launch {
-            try {
-                val authToken = module.login(
-                    clientId = arguments.clientId,
-                    discoveryUri = discoveryUri,
-                    loginHint = arguments.loginHint,
-                    redirectScheme = module.context.resources.getString(resourceId).toUri()
-                )
-                jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
-            } catch (e: Exception) {
-                com.geotab.mobile.sdk.logging.Logger.shared.error("StartFunction", "Login failed: ${e.message}", e)
-                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, e.message ?: "Login failed")))
-            }
-        }
+        module.login(
+            arguments.clientId,
+            discoveryUri,
+            arguments.loginHint,
+            module.context.resources.getString(resourceId).toUri(),
+            jsCallback
+        )
     }
 
     override fun getType(): Type {

@@ -4,11 +4,12 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import com.geotab.mobile.sdk.logging.Logger
+import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Module
+import com.geotab.mobile.sdk.module.Result
+import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.auth.AuthToken
 import com.geotab.mobile.sdk.module.auth.AuthUtil
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import net.openid.appauth.AuthorizationService
 
@@ -19,8 +20,6 @@ class LoginModule(
 
     @Transient
     lateinit var context: Context
-
-    internal val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
         const val MODULE_NAME = "login"
@@ -41,49 +40,35 @@ class LoginModule(
         )
     }
 
-    /**
-     * Perform login for a user.
-     *
-     * @return AuthToken on success
-     * @throws Exception on failure
-     */
-    suspend fun login(
+    fun login(
         clientId: String,
         discoveryUri: Uri,
         loginHint: String,
-        redirectScheme: Uri
-    ): AuthToken {
+        redirectScheme: Uri,
+        loginFunctionCallback: (Result<Success<String>, Failure>) -> Unit
+    ) {
         Logger.shared.info(TAG, "login function was called")
         if (isAuthServiceDisposed) {
             authUtil.authService = AuthorizationService(context)
         }
 
-        return try {
-            authUtil.login(
-                clientId = clientId,
-                discoveryUri = discoveryUri,
-                username = loginHint,
-                redirectScheme = redirectScheme,
-                comingFromLoginModule = true
-            ).also {
-                isAuthServiceDisposed = true
-            }
-        } catch (e: Exception) {
+        authUtil.login(
+            clientId = clientId,
+            discoveryUri = discoveryUri,
+            username = loginHint,
+            redirectScheme = redirectScheme,
+            comingFromLoginModule = true,
+            loginCallback = loginFunctionCallback
+        ).also {
             isAuthServiceDisposed = true
-            Logger.shared.error(TAG, "Login failed: ${e.message}", e)
-            throw e
         }
     }
 
     fun handleAuthToken(username: String): AuthToken? {
         Logger.shared.info(TAG, "handleAuthToken function was called")
         val authToken = runBlocking {
-            try {
-                authUtil.getValidAccessToken(context, username)
-            } catch (e: Exception) {
-                Logger.shared.error(TAG, "Failed to get valid access token for $username: ${e.message}", e)
-                null
-            }
+            val token = authUtil.getValidAccessToken(context, username)
+            token
         }
         return authToken
     }

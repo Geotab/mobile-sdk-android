@@ -18,6 +18,7 @@ import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.login.TokenRefreshWorker
 import com.geotab.mobile.sdk.util.JsonUtil
 import java.io.BufferedWriter
@@ -58,8 +59,7 @@ data class AuthToken(
 @Parcelize
 data class GeotabAuthState(
     val authState: String,
-    val username: String,
-    val ephemeralSession: Boolean = false
+    val username: String
 ) : Parcelable
 
 class AuthUtil(
@@ -69,16 +69,12 @@ class AuthUtil(
     @get:VisibleForTesting
     internal val authScope: CoroutineScope = CoroutineScope(Executors.newSingleThreadExecutor().asCoroutineDispatcher()),
     @get:VisibleForTesting
-    internal val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
-    @get:VisibleForTesting
-    internal val authCoordinator: AuthorizationCoordinator = AuthorizationCoordinator()
+    internal val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
 ) {
     private var loginCallback: ((Result<Success<String>, Failure>) -> Unit)? = null
     private var logoutCallback: ((Result<Success<String>, Failure>) -> Unit)? = null
     var authService: AuthorizationService? = null
     private var authState: AuthState? = null
-    private var currentGeotabAuthState: GeotabAuthState? = null
-    private var currentEphemeralSession: Boolean = false
 
     // TODO: When LoginModule is removed, we can remove this flag as well
     private var isFromLoginModule = false
@@ -137,237 +133,74 @@ class AuthUtil(
         }
     }
 
-    /**
-     * Perform login for a user.
-     *
-     * Uses suspend/throw pattern instead of callbacks:
-     * - Suspends until login completes
-     * - Throws exception on failure
-     * - Returns AuthToken on success
-     *
-     * Multiple concurrent calls for the same user will be deduplicated by AuthorizationCoordinator,
-     * with all callers receiving the same result.
-     *
-     * @param clientId OAuth client ID
-     * @param discoveryUri OAuth discovery URI
-     * @param username The username to login
-     * @param redirectScheme OAuth redirect URI
-     * @param ephemeralSession Whether this is an ephemeral session
-     * @param comingFromLoginModule Whether this call is from LoginModule (temporary flag)
-     * @return AuthToken on successful login
-     * @throws Exception on login failure
-     */
-    suspend fun login(
+    fun login(
         clientId: String,
         discoveryUri: Uri,
         username: String,
         redirectScheme: Uri,
-        ephemeralSession: Boolean = false,
-        comingFromLoginModule: Boolean = false
-    ): AuthToken = withContext(authScope.coroutineContext) {
-        return@withContext authCoordinator.performLogin(username) {
-            performLoginInternal(
-                clientId,
-                discoveryUri,
-                username,
-                redirectScheme,
-                ephemeralSession,
-                comingFromLoginModule
-            )
-        }
-    }
+        comingFromLoginModule: Boolean = false,
+        loginCallback: ((Result<Success<String>, Failure>) -> Unit)?
+    ) {
+        this.loginCallback = loginCallback
+        authScope.launch {
+            isFromLoginModule = comingFromLoginModule
+            try {
+                val serviceConfiguration = fetchFromUrlSuspend(discoveryUri)
 
-    private suspend fun performLoginInternal(
-        clientId: String,
-        discoveryUri: Uri,
-        username: String,
-        redirectScheme: Uri,
-        ephemeralSession: Boolean,
-        comingFromLoginModule: Boolean
-    ): AuthToken {
-        return suspendCancellableCoroutine { continuation ->
-            this.loginCallback = { result ->
-                when (result) {
-                    is Success -> {
-                        val authToken = jsonUtil.fromJson<AuthToken>(result.value)
-                        continuation.resume(authToken)
+                val authRequest = AuthorizationRequest.Builder(
+                    serviceConfiguration,
+                    clientId,
+                    ResponseTypeValues.CODE,
+                    redirectScheme
+                )
+                    .setScope("openid profile email")
+                    .setLoginHint(username)
+                    .setState(username)
+                    .build()
+
+                authService?.let { authService ->
+                    val authIntent = authService.getAuthorizationRequestIntent(authRequest)
+                    withContext(mainDispatcher) {
+                        loginActivityResultLauncher.launch(authIntent)
                     }
-                    is Failure -> {
-                        continuation.resumeWithException(Exception(result.reason.getErrorMessage()))
-                    }
-                }
-            }
-
-            authScope.launch {
-                Logger.shared.debug("$TAG.login", "Starting login for user: $username")
-                isFromLoginModule = comingFromLoginModule
-                currentEphemeralSession = ephemeralSession
-                try {
-                    val serviceConfiguration = fetchFromUrlSuspend(discoveryUri)
-
-                    val authRequest = AuthorizationRequest.Builder(
-                        serviceConfiguration,
-                        clientId,
-                        ResponseTypeValues.CODE,
-                        redirectScheme
-                    )
-                        .setScope("openid profile email")
-                        .setLoginHint(username)
-                        .setState(username)
-                        .build()
-
-                    authService?.let { authService ->
-                        val authIntent = authService.getAuthorizationRequestIntent(authRequest)
-                        withContext(mainDispatcher) {
-                            loginActivityResultLauncher.launch(authIntent)
-                        }
-                    } ?: throw IllegalStateException("AuthorizationService not initialized")
-                } catch (e: Exception) {
-                    sendErrorMessage(
-                        errorMessage = e.message ?: "Failed to fetch configuration or create auth request",
-                        callback = this@AuthUtil.loginCallback
-                    )
-                }
+                } ?: throw IllegalStateException("AuthorizationService not initialized")
+            } catch (e: Exception) {
+                sendErrorMessage(
+                    errorMessage = e.message ?: "Failed to fetch configuration or create auth request",
+                    callback = loginCallback
+                )
             }
         }
     }
 
-    /**
-     * Perform authorization flow with a pre-fetched configuration.
-     * Matches iOS performAuthorizationFlow - used by reauth() to avoid re-fetching configuration.
-     */
-    private suspend fun performAuthorizationFlow(
-        configuration: AuthorizationServiceConfiguration,
-        clientId: String,
-        username: String,
-        redirectScheme: Uri,
-        ephemeralSession: Boolean,
-        comingFromLoginModule: Boolean
-    ): AuthToken {
-        return suspendCancellableCoroutine { continuation ->
-            this.loginCallback = { result ->
-                when (result) {
-                    is Success -> {
-                        val authToken = jsonUtil.fromJson<AuthToken>(result.value)
-                        continuation.resume(authToken)
-                    }
-                    is Failure -> {
-                        continuation.resumeWithException(Exception(result.reason.getErrorMessage()))
-                    }
-                }
-            }
-
-            authScope.launch {
-                Logger.shared.debug("$TAG.performAuthorizationFlow", "Starting authorization flow for user: $username")
-                isFromLoginModule = comingFromLoginModule
-                currentEphemeralSession = ephemeralSession
-                try {
-                    val authRequest = AuthorizationRequest.Builder(
-                        configuration,
-                        clientId,
-                        ResponseTypeValues.CODE,
-                        redirectScheme
-                    )
-                        .setScope("openid profile email")
-                        .setLoginHint(username)
-                        .setState(username)
-                        .build()
-
-                    authService?.let { authService ->
-                        val authIntent = authService.getAuthorizationRequestIntent(authRequest)
-                        withContext(mainDispatcher) {
-                            loginActivityResultLauncher.launch(authIntent)
-                        }
-                    } ?: throw IllegalStateException("AuthorizationService not initialized")
-                } catch (e: Exception) {
-                    sendErrorMessage(
-                        errorMessage = e.message ?: "Failed to create auth request",
-                        callback = this@AuthUtil.loginCallback
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Re-authenticate an existing user using their stored auth configuration.
-     *
-     * This method is used when a token refresh fails due to the refresh token being invalid
-     * or revoked by the auth server. It reuses the existing OAuth configuration and settings
-     * from the user's previous login.
-     *
-     * Unlike login(), this method uses suspend/throw pattern (matching iOS async/throws):
-     * - Suspends until re-authentication completes
-     * - Throws AuthError or GetTokenError on failure
-     * - Returns AuthToken on success
-     *
-     * @param context Application context
-     * @param username The username to re-authenticate
-     * @return AuthToken on successful re-authentication
-     * @throws GetTokenError.NoAccessTokenFoundError if no existing auth state found
-     * @throws AuthError.SessionRetrieveFailedError if unable to extract configuration
-     */
-    suspend fun reauth(
-        username: String
-    ): AuthToken = withContext(authScope.coroutineContext) {
-        return@withContext authCoordinator.performReauth(username) {
-            Logger.shared.debug("$TAG.reauth", "Starting re-authentication for user: $username")
-            // Load existing auth state to get configuration and client info
-            getAuthState(username)
-            val state = authState ?: throw GetTokenError.NoAccessTokenFoundError(username)
-            val geotabState = currentGeotabAuthState ?: throw GetTokenError.NoAccessTokenFoundError(username)
-
-            // Extract OAuth configuration from stored auth state
-            val authRequest = state.lastAuthorizationResponse?.request
-                ?: throw AuthError.SessionRetrieveFailedError
-
-            val configuration = authRequest.configuration
-            val clientId = authRequest.clientId
-            val redirectUri = authRequest.redirectUri
-            val ephemeralSession = geotabState.ephemeralSession
-
-            // Perform re-authentication using stored configuration
-            performAuthorizationFlow(
-                configuration = configuration,
-                clientId = clientId,
-                username = username,
-                redirectScheme = redirectUri,
-                ephemeralSession = ephemeralSession,
-                comingFromLoginModule = false
-            )
-        }
-    }
-
-    /**
-     * Perform logout for a user.
-     *
-     * @param context Application context
-     * @param username The username to logout
-     * @throws Exception on logout failure
-     */
     suspend fun logout(
         context: Context,
-        username: String
+        username: String,
+        logoutCallbackFromModule: ((Result<Success<String>, Failure>) -> Unit)?
     ) = withContext(authScope.coroutineContext) {
-        authCoordinator.performLogout(username) {
-            Logger.shared.debug("$TAG.logout", "Starting logout for user: $username")
+        logoutCallback = logoutCallbackFromModule
 
-            try {
-                getAuthState(username)
+        try {
+            getAuthState(username)
 
-                if (authState == null) {
+            if (authState == null) {
+                logoutCallback?.let {
                     val message = "No valid token found for user $username"
-                    Logger.shared.error("$TAG.logout", message)
-                    throw Exception(message)
+                    Logger.shared.error(TAG, message)
+                    it(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, jsonUtil.toJson(message))))
                 }
-
-                revokeToken()
-                launchLogoutUser()
-            } catch (e: Exception) {
-                throw Exception(e.message ?: "Failed to create end session request", e)
-            } finally {
-                deleteToken(context, username)
+                return@withContext
             }
+
+            revokeToken()
+            launchLogoutUser()
+        } catch (e: Exception) {
+            sendErrorMessage(
+                errorMessage = e.message ?: "Failed to create end session request",
+                callback = logoutCallback
+            )
+        } finally {
+            deleteToken(context, username)
         }
     }
 
@@ -377,68 +210,46 @@ class AuthUtil(
         forceRefresh: Boolean = false,
         startScheduler: Boolean = true
     ): AuthToken? = withContext(authScope.coroutineContext) {
-        return@withContext authCoordinator.performTokenRefresh(username, forceRefresh) {
-            getAuthState(username)
-            val state = authState ?: return@performTokenRefresh null
-            // Refresh if it's forced (by the worker) OR if the token is already expired.
-            val needsRefresh = forceRefresh || state.needsTokenRefresh
+        getAuthState(username)
+        val state = authState ?: return@withContext null
+        // Refresh if it's forced (by the worker) OR if the token is already expired.
+        val needsRefresh = forceRefresh || state.needsTokenRefresh
 
-            if (needsRefresh) {
-                Logger.shared.debug("$TAG.getValidAccessToken", "Starting token refresh for user: $username")
-                try {
-                    val tokenRefreshRequest = state.createTokenRefreshRequest()
+        if (needsRefresh) {
+            try {
+                val tokenRefreshRequest = state.createTokenRefreshRequest()
 
-                    val refreshedTokenResponse =
-                        authService?.performTokenRequestSuspend(tokenRefreshRequest)
-                            ?: throw Exception("Token refresh resulted in a null response")
+                val refreshedTokenResponse =
+                    authService?.performTokenRequestSuspend(tokenRefreshRequest)
+                        ?: throw Exception("Token refresh resulted in a null response")
 
-                    // Update the in-memory state object with the new token
-                    state.update(refreshedTokenResponse, null)
-                    // Persist the updated state to the database, preserving ephemeralSession
-                    insertToken(
-                        GeotabAuthState(
-                            authState = state.jsonSerializeString(),
-                            username = username,
-                            ephemeralSession = currentGeotabAuthState?.ephemeralSession ?: false
-                        )
+                // Update the in-memory state object with the new token
+                state.update(refreshedTokenResponse, null)
+                // Persist the updated state to the database
+                insertToken(
+                    GeotabAuthState(
+                        authState = state.jsonSerializeString(),
+                        username = username
                     )
-                    if (startScheduler) {
-                        // Reschedule the worker after successful refresh
-                        rescheduleTokenRefreshWorker(context, username)
-                    }
-                } catch (ex: Exception) {
-                    // Classify the error as recoverable (network issue) or non-recoverable (auth server rejection)
-                    when {
-                        GetTokenError.isRecoverableError(ex) -> {
-                            // Network error - keep auth state, user can retry
-                            Logger.shared.info("$TAG.getValidAccessToken", "Token refresh failed (recoverable): ${ex.message}")
-                            throw GetTokenError.TokenRefreshFailed(
-                                username = username,
-                                underlyingError = ex,
-                                requiresReauthentication = false
-                            )
-                        }
-                        else -> {
-                            // Auth server rejected the refresh token - trigger automatic re-auth
-                            Logger.shared.info("$TAG.getValidAccessToken", "Token refresh failed (requires re-auth): ${ex.message}")
-                            try {
-                                return@performTokenRefresh reauth(username)
-                            } catch (reauthEx: Exception) {
-                                Logger.shared.error("$TAG.getValidAccessToken", "Re-authentication failed: ${reauthEx.message}", reauthEx)
-                                throw reauthEx
-                            }
-                        }
-                    }
+                )
+                if (startScheduler) {
+                    // Reschedule the worker after successful refresh
+                    rescheduleTokenRefreshWorker(context, username)
                 }
+            } catch (ex: Exception) {
+                Logger.shared.error(TAG, "Exception on refresh: ${ex.message}")
+                deleteToken(context, username)
+                authState = null
+                return@withContext null
             }
-            state.accessToken?.takeIf { it.isNotEmpty() }?.let { AuthToken(it) }
         }
+        return@withContext state.accessToken?.takeIf { it.isNotEmpty() }?.let { AuthToken(it) }
     }
 
     internal suspend fun handleAuthorizationResponse(context: Context, data: Intent?) {
         if (data == null) {
             sendErrorMessage(
-                errorMessage = "User cancelled flow",
+                errorMessage = "Activity result was null",
                 callback = loginCallback
             )
             return
@@ -449,16 +260,8 @@ class AuthUtil(
 
         when {
             exception != null -> {
-                // Check if user cancelled the flow
-                val errorMessage = if (exception.type == AuthorizationException.TYPE_GENERAL_ERROR &&
-                    exception.code == AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code
-                ) {
-                    "User cancelled flow"
-                } else {
-                    exception.message ?: "Authorization failed"
-                }
                 sendErrorMessage(
-                    errorMessage = errorMessage,
+                    errorMessage = exception.message ?: "Authorization failed",
                     callback = loginCallback
                 )
             }
@@ -489,7 +292,7 @@ class AuthUtil(
         callback: ((Result<Success<String>, Failure>) -> Unit)? = loginCallback
     ) {
         Logger.shared.error(
-            "$TAG.sendErrorMessage",
+            TAG,
             errorMessage
         )
         callback?.let {
@@ -532,8 +335,7 @@ class AuthUtil(
 
         val geotabAuthState = GeotabAuthState(
             authState = authState?.jsonSerializeString() ?: "",
-            username = username,
-            ephemeralSession = currentEphemeralSession
+            username = username
         )
 
         insertToken(geotabAuthState)
@@ -546,23 +348,20 @@ class AuthUtil(
             val tokensList = getAllTokens()
             val geotabAuthState = getCredentialsFromUsername(username, tokensList) ?: run {
                 Logger.shared.error(
-                    "$TAG.getAuthState",
-                    "No auth state found for user: $username"
+                    TAG,
+                    "No auth state found for user"
                 )
 
                 // Since we couldn't find a token for the user, ensure authState is null
                 authState = null
-                currentGeotabAuthState = null
                 return
             }
 
             authState = AuthState.jsonDeserialize(geotabAuthState.authState)
-            currentGeotabAuthState = geotabAuthState
         } catch (e: Exception) {
             Logger.shared.error(
-                "$TAG.getAuthState",
-                "Error fetching auth state: ${e.message ?: "Unknown error"}",
-                e
+                TAG,
+                "Error fetching auth state: ${e.message ?: "Unknown error"}"
             )
         }
     }
@@ -626,9 +425,8 @@ class AuthUtil(
             cancelScheduleNextRefreshToken(context, username)
         } catch (e: Exception) {
             Logger.shared.error(
-                "$TAG.deleteToken",
-                "Error deleting auth token: ${e.message ?: "Unknown error"}",
-                e
+                TAG,
+                "Error deleting auth token: ${e.message ?: "Unknown error"}"
             )
         }
     }
@@ -660,9 +458,8 @@ class AuthUtil(
                 JsonUtil.fromJson<MutableList<GeotabAuthState>>(CharArrayReader(allTokensChars))
             } catch (e: Exception) {
                 Logger.shared.error(
-                    "$TAG.getAllTokens",
-                    "Error parsing auth tokens JSON: ${e.message ?: "Unknown error"}",
-                    e
+                    "AuthUtil.getAllTokens",
+                    "Error parsing auth tokens JSON: ${e.message ?: "Unknown error"}"
                 )
                 mutableListOf()
             } finally {
@@ -698,7 +495,7 @@ class AuthUtil(
 
         if (config == null || redirectUri == null || idToken == null) {
             authState = null
-            Logger.shared.error("$TAG.launchLogoutUser", "No valid configuration, redirect URI, or ID token found in logout flow")
+            Logger.shared.error(TAG, "No valid configuration, redirect URI, or ID token found in logout flow")
             return
         }
 
@@ -719,8 +516,8 @@ class AuthUtil(
             authState = null
 
             logoutCallback?.let {
-                val message = "Logged out successfully"
-                Logger.shared.info("$TAG.handleLogoutResponse", message)
+                val message = "Successfully logged out"
+                Logger.shared.info(TAG, message)
                 it(Success(jsonUtil.toJson(message)))
             }
         } catch (ex: Exception) {
@@ -742,18 +539,18 @@ class AuthUtil(
         val revocationEndpoint = try {
             discoveryDoc?.docJson?.getString("revocation_endpoint")
         } catch (e: Exception) {
-            Logger.shared.error("$TAG.revokeToken", "No 'revocation_endpoint' found in discovery document.", e)
+            Logger.shared.error(TAG, "No 'revocation_endpoint' found in discovery document.", e)
             null
         }
 
         if (revocationEndpoint.isNullOrEmpty()) {
-            Logger.shared.error("$TAG.revokeToken", "Authorization server configuration does not support token revocation.")
+            Logger.shared.error(TAG, "Authorization server configuration does not support token revocation.")
             return
         }
 
         val tokenToRevoke = authState?.refreshToken ?: authState?.accessToken
         if (tokenToRevoke == null) {
-            Logger.shared.debug("$TAG.revokeToken", "No valid token available to revoke.")
+            Logger.shared.debug(TAG, "No valid token available to revoke.")
             return
         }
 
@@ -766,7 +563,7 @@ class AuthUtil(
 
             val clientId = authState?.lastAuthorizationResponse?.request?.clientId
             if (clientId.isNullOrEmpty()) {
-                Logger.shared.error("$TAG.revokeToken", "Client ID is missing, cannot perform revocation.")
+                Logger.shared.error(TAG, "Client ID is missing, cannot perform revocation.")
                 return
             }
 
@@ -777,11 +574,11 @@ class AuthUtil(
             writer.flush()
             writer.close()
 
-            Logger.shared.info("$TAG.revokeToken", "Token revocation response code: ${connection.responseCode}")
+            Logger.shared.info(TAG, "Token revocation response code: ${connection.responseCode}")
         } catch (e: IOException) {
-            Logger.shared.error("$TAG.revokeToken", "Network error during token revocation.", e)
+            Logger.shared.error(TAG, "Network error during token revocation.", e)
         } catch (e: Exception) {
-            Logger.shared.error("$TAG.revokeToken", "An unexpected error occurred during token revocation.", e)
+            Logger.shared.error(TAG, "An unexpected error occurred during token revocation.", e)
         } finally {
             connection?.disconnect()
         }
@@ -800,9 +597,8 @@ class AuthUtil(
             }
         } catch (e: Exception) {
             Logger.shared.error(
-                "$TAG.startTokenRefresh",
-                "Error starting token refresh: ${e.message}",
-                e
+                LoginModule.Companion.TAG,
+                "Error starting token refresh: ${e.message}"
             )
         }
     }

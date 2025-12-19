@@ -9,7 +9,6 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 
 @Keep
@@ -33,15 +32,10 @@ class LogoutFunction(
             return
         }
 
-        module.scope.launch {
-            try {
-                module.logout(username = arguments.username)
-                jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson("Logged out successfully")))
-            } catch (e: Exception) {
-                com.geotab.mobile.sdk.logging.Logger.shared.error("LogoutFunction", "Logout failed: ${e.message}", e)
-                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, e.message ?: "Logout failed")))
-            }
-        }
+        module.logout(
+            username = arguments.username,
+            logoutFunctionCallback = jsCallback
+        )
     }
 
     override fun getType(): Type {
