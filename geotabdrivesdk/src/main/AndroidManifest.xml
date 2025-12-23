@@ -54,6 +54,9 @@
              RedirectUriReceiverActivity in their app if they don't use SSO login.-->
         <activity
             android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
             android:exported="true"
             tools:node="replace">
         </activity>

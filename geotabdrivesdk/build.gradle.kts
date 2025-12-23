@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.8.2_75511"
+val versionName = "6.8.2_75575"
 
 plugins {
     id("com.android.library")
@@ -20,7 +20,7 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 android {
-    compileSdk = 34
+    compileSdk = 36
     namespace = "com.geotab.mobile.sdk"
 
     defaultConfig {
@@ -135,6 +135,7 @@ dependencies {
     dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:1.8.10")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.activity:activity-ktx:1.8.0")
     // This implementation is needed for consumers of the SDK have the option to not include the
     // RedirectUriReceiverActivity in their app if they don't use SSO login.
     api("net.openid:appauth:0.11.1")

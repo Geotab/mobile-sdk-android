@@ -496,6 +496,15 @@ class MyGeotabFragment :
         _binding = null
     }
 
+    /**
+     * Set a callback to be invoked when the WebView navigates to a different domain.
+     * This is useful for detecting server changes that occur in the WebView login page.
+     * @param callback Function that receives the new domain (hostname) as a String parameter
+     */
+    fun setOnDomainChangeCallback(callback: ((String) -> Unit)?) {
+        contentController.setOnDomainChangeCallback(callback)
+    }
+
     private fun moveAppToBackground() {
         requireActivity().moveTaskToBack(true)
     }
