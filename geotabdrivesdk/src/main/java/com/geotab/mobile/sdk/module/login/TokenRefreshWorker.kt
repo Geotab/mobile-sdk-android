@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import androidx.work.Data
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.module.auth.AuthUtil
+import com.geotab.mobile.sdk.module.auth.AuthError
 import java.util.concurrent.TimeUnit
 
 class TokenRefreshWorker(
@@ -16,6 +17,7 @@ class TokenRefreshWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
+        private const val TAG = "TokenRefreshWorker"
         internal const val KEY_USERNAME = "username"
         const val UNIQUE_WORK_NAME_PREFIX = "token-refresh-work-"
         fun getUniqueWorkName(username: String): String = "$UNIQUE_WORK_NAME_PREFIX$username"
@@ -29,7 +31,7 @@ class TokenRefreshWorker(
             username: String,
             delayMillis: Long
         ) {
-            Logger.shared.debug("TokenRefreshWorker", "scheduling token refresh")
+            Logger.shared.debug(TAG, "scheduling token refresh")
             val workManager = WorkManager.getInstance(context)
             val workName = getUniqueWorkName(username)
             val inputData = Data.Builder().putString(KEY_USERNAME, username).build()
@@ -51,7 +53,7 @@ class TokenRefreshWorker(
         val username = inputData.getString(KEY_USERNAME)
             ?: return Result.failure().also {
                 Logger.shared.error(
-                    "TokenRefreshWorker",
+                    TAG,
                     "Username not provided in worker data"
                 )
             }
@@ -59,7 +61,7 @@ class TokenRefreshWorker(
             AuthUtil.getInstance()
         } catch (e: IllegalStateException) {
             Logger.shared.error(
-                "TokenRefreshWorker",
+                TAG,
                 "AuthUtil has not been initialized: ${e.message}"
             )
             return Result.failure()
@@ -71,12 +73,12 @@ class TokenRefreshWorker(
                 forceRefresh = true,
                 startScheduler = false
             )
-            Logger.shared.debug("TokenRefreshWorker", "After fetching token")
+            Logger.shared.debug(TAG, "After fetching token")
 
             if (token != null) {
                 // token successfully obtained; proceed with scheduling next refresh
                 Logger.shared.debug(
-                    "TokenRefreshWorker",
+                    TAG,
                     "Token is valid or was refreshed successfully"
                 )
                 // continue the chain by enqueuing the next TokenRefreshWorker
@@ -84,16 +86,35 @@ class TokenRefreshWorker(
                 Result.success()
             } else {
                 Logger.shared.error(
-                    "TokenRefreshWorker",
+                    TAG,
                     "Failed to refresh token. A new login may be required."
                 )
                 Result.failure()
             }
         } catch (e: Exception) {
             Logger.shared.error(
-                "TokenRefreshWorker",
+                TAG,
                 "Token refresh failed with an exception: ${e.message}"
             )
+            // Check if this is a recoverable error that should be retried
+            when (e) {
+                is AuthError.TokenRefreshFailed -> {
+                    if (!e.requiresReauthentication) {
+                        // Recoverable error (network issue) - schedule retry with exponential backoff
+                        Logger.shared.debug(
+                            TAG,
+                            "Recoverable error detected, scheduling retry with backoff for $username"
+                        )
+                        authUtil.scheduleNextRefreshTokenWithBackoff(applicationContext, username)
+                    } else {
+                        // For non-recoverable errors (requiresReauthentication=true):
+                        // - If app was in foreground: reauth already happened and reset was done in handleSuccessfulTokenExchange
+                        // - If app was in background: reauth was deferred, reset here to avoid backoff accumulation
+                        authUtil.resetRetryAttempts(username)
+                    }
+                }
+            }
+            // For other exceptions (reauth failed, etc.), no retry needed
             Result.failure()
         }
     }

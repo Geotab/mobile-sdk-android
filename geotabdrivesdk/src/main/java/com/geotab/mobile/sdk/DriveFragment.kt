@@ -633,17 +633,42 @@ class DriveFragment :
     }
 
     private fun buildErrorJavaScript(callback: String, reason: Error): String {
-        val errorMessage = "${reason.getErrorCode()}: ${reason.getErrorMessage()}"
-        return """
-        try {
-            var t = $callback(new Error(`$errorMessage`));
-            if (t instanceof Promise) {
-                t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
+        val errorMessage = reason.getErrorMessage()
+
+        // Check if error message is structured JSON (starts with '{' and contains required fields)
+        val isStructuredError = AuthUtil.isStructuredAuthError(errorMessage)
+
+        return if (!isStructuredError) {
+            // Basic error message - create simple Error object
+            val fullMessage = "${reason.getErrorCode()}: $errorMessage"
+            """
+            try {
+                var t = $callback(new Error(`$fullMessage`));
+                if (t instanceof Promise) {
+                    t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
+                }
+            } catch(err) {
+                console.log(">>>>> Unexpected exception in callback: ", err);
             }
-        } catch(err) {
-            console.log(">>>>> Unexpected exception in callback: ", err);
+            """.trimIndent()
+        } else {
+            // Structured error with metadata - parse JSON and merge into Error object
+            // Note: We explicitly set message as enumerable property so JSON.stringify works
+            """
+            try {
+                var json = $errorMessage;
+                var error = new Error(json.message);
+                Object.assign(error, json);
+                Object.defineProperty(error, 'message', { value: json.message, enumerable: true, writable: true });
+                var t = $callback(error);
+                if (t instanceof Promise) {
+                    t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
+                }
+            } catch(err) {
+                console.log(">>>>> Unexpected exception in callback: ", err);
+            }
+            """.trimIndent()
         }
-        """.trimIndent()
     }
 
     private fun callModuleFunction(

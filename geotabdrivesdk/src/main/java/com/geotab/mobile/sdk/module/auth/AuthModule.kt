@@ -53,7 +53,6 @@ class AuthModule(
 
     /**
      * Perform login for a user.
-     * Matches iOS AuthModule.login() - pure suspend function with no callbacks.
      *
      * @return AuthToken on success
      * @throws Exception on failure
@@ -79,8 +78,7 @@ class AuthModule(
             }
         } catch (e: Exception) {
             isAuthServiceDisposed = true
-            Logger.shared.error(TAG, "Login failed: ${e.message}", e)
-            throw e
+            handleAuthException(e, "Login")
         }
     }
 
@@ -88,7 +86,77 @@ class AuthModule(
         try {
             authUtil.getValidAccessToken(context, username)
         } catch (e: Exception) {
-            Logger.shared.error(TAG, "Failed to get valid access token for $username: ${e.message}", e)
-            null
+            handleAuthException(e, "Get valid access token")
         }
+
+    /**
+     * Handles exceptions from auth operations, wrapping unexpected errors appropriately.
+     * - Re-throws AuthError instances to preserve structured error information
+     * - Re-throws exceptions with JSON-formatted error messages (wrapped AuthErrors)
+     * - Wraps truly unexpected exceptions in UnexpectedError
+     *
+     * @param e The exception to handle
+     * @param operationName Name of the operation for logging purposes
+     * @throws AuthError or Exception
+     */
+    private fun handleAuthException(e: Exception, operationName: String): Nothing {
+        when (e) {
+            is AuthError -> throw e
+            else -> {
+                // Check if this is a wrapped structured error (JSON in exception message)
+                val errorMessage = e.message
+                if (AuthUtil.isStructuredAuthError(errorMessage)) {
+                    // This is a structured error wrapped in a generic exception, re-throw it
+                    throw e
+                }
+
+                Logger.shared.error(TAG, "$operationName failed with unexpected error: ${e.message}", e)
+                throw AuthError.UnexpectedError(
+                    description = "$operationName failed with unexpected error",
+                    underlyingError = e
+                )
+            }
+        }
+    }
+
+    /**
+     * Handles exceptions from auth function calls (LoginFunction, LogoutFunction, GetTokenFunction).
+     * Used by Function classes to provide consistent error handling with structured JSON errors.
+     *
+     * - Returns AuthError instances with their errorDescription
+     * - Returns exceptions with JSON-formatted error messages (wrapped AuthErrors) as-is
+     * - Wraps unexpected exceptions in UnexpectedError with operation context
+     *
+     * @param e The exception to handle
+     * @param operationName Name of the operation for error messages
+     * @param jsCallback Callback to notify JavaScript caller with structured error
+     */
+    fun handleFunctionException(
+        e: Exception,
+        operationName: String,
+        jsCallback: (com.geotab.mobile.sdk.module.Result<com.geotab.mobile.sdk.module.Success<String>, com.geotab.mobile.sdk.module.Failure>) -> Unit
+    ) {
+        when (e) {
+            is AuthError -> {
+                jsCallback(com.geotab.mobile.sdk.module.Failure(com.geotab.mobile.sdk.Error(com.geotab.mobile.sdk.models.enums.GeotabDriveError.AUTH_FAILED_ERROR, e.errorDescription)))
+            }
+            else -> {
+                // Check if this is a wrapped structured error (JSON in exception message)
+                val errorMessage = e.message
+                if (AuthUtil.isStructuredAuthError(errorMessage)) {
+                    // This is a structured error wrapped in a generic exception, pass it through as-is
+                    jsCallback(com.geotab.mobile.sdk.module.Failure(com.geotab.mobile.sdk.Error(com.geotab.mobile.sdk.models.enums.GeotabDriveError.AUTH_FAILED_ERROR, errorMessage)))
+                    return
+                }
+
+                // Truly unexpected exception - wrap it
+                Logger.shared.error(TAG, "$operationName failed with unexpected error: ${e.message}", e)
+                val unexpectedError = AuthError.UnexpectedError(
+                    description = "$operationName failed with unexpected error",
+                    underlyingError = e
+                )
+                jsCallback(com.geotab.mobile.sdk.module.Failure(com.geotab.mobile.sdk.Error(com.geotab.mobile.sdk.models.enums.GeotabDriveError.AUTH_FAILED_ERROR, unexpectedError.errorDescription)))
+            }
+        }
+    }
 }

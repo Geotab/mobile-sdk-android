@@ -519,41 +519,244 @@ declare namespace geotabModules {
     }
 
     namespace auth {
+        /**
+         * Structured authentication error with metadata for programmatic handling.
+         * Web developers can use err.code to determine the error type and err.recoverable
+         * to decide whether to retry or show an error message.
+         */
+        interface AuthError extends Error {
+            /**
+             * Error code for programmatic error handling.
+             */
+            code:
+                | 'SESSION_PARSE_FAILED'
+                | 'SESSION_RETRIEVE_FAILED'
+                | 'PARSE_FAILED_FOR_AUTH_STATE'
+                | 'NO_DATA_FOUND'
+                | 'INVALID_URL'
+                | 'MISSING_AUTH_DATA'
+                | 'NO_EXTERNAL_USER_AGENT'
+                | 'USER_CANCELLED'
+                | 'INVALID_REDIRECT_SCHEME'
+                | 'FAILED_TO_SAVE_AUTH_STATE'
+                | 'USERNAME_MISMATCH'
+                | 'NO_ACCESS_TOKEN_FOUND'
+                | 'TOKEN_REFRESH_FAILED'
+                | 'TOKEN_REFRESH_REAUTH_REQUIRED'
+                | 'REVOKE_TOKEN_FAILED'
+                | 'NETWORK_ERROR'
+                | 'UNEXPECTED_RESPONSE'
+                | 'UNEXPECTED_ERROR';
+
+            /**
+             * Human-readable error message.
+             */
+            message: string;
+
+            /**
+             * Whether this error is recoverable (can retry).
+             * Recoverable errors include network issues, server errors (5xx), and user cancellations.
+             */
+            recoverable: boolean;
+
+            /**
+             * Whether this error requires user re-authentication.
+             * Only present for TOKEN_REFRESH_REAUTH_REQUIRED errors.
+             */
+            requiresReauthentication?: boolean;
+
+            /**
+             * Username associated with this error (if applicable).
+             */
+            username?: string;
+
+            /**
+             * Details about the underlying error cause.
+             */
+            underlyingError?: string;
+        }
+
         /*******
          * Start the login function integrated with Chrome Custom Tabs.
-         * @param argument: { clientId: string, discoveryUri: string, username: string }
+         * @param argument: { clientId: string, discoveryUri: string, username: string, ephemeralSession?: boolean }
+         *      - clientId: OAuth client ID for the authentication provider
+         *      - discoveryUri: OpenID Connect discovery document URL
+         *      - username: User's email/username (used to pre-fill login and identify stored tokens)
+         *      - ephemeralSession: Optional. If true, token refresh will not persist after app restart
          * @param callback:
-         *      - result: string. A GeotabAuthState object.
-         *  The username parameter is mandatory as we use it to store it as username in the SecureStorage.
-         *  It is also used to pre-fill the username field in the login page.
-         *  On a successful call a GeotabAuthState object turned into JSON will be given as result
-         *  If there's an error while logging in, err will be given.
-         *  GeotabAuthState object contains the following properties:
-         * { accessToken: string }
+         *      - result: string. A GeotabAuthState object containing { accessToken: string }
+         *      - err: Error. Possible error messages:
+         *          • "Failed to fetch configuration or create auth request" - Cannot reach discoveryUri, invalid response, or bad OAuth parameters
+         *          • "User cancelled flow" - User closed the login browser or pressed back button
+         *          • "Authorization failed" - OAuth provider rejected the authorization request
+         *          • "No data returned from authorization flow" - Authorization response was empty or null
+         *          • "Token exchange failed" - Failed to exchange authorization code for access token
+         *          • "Username (state) is null" - Authorization response missing state parameter
+         *          • "Username mismatch: expected '<expected>' but access token contains '<actual>'" - Token username doesn't match requested username
+         *          • "Failed to save auth state for user <username>: <details>" - Unable to persist tokens to secure storage
+         *          • "Network error: <details>" - Network connectivity issue during OAuth flow
+         *          • "Login failed" - Generic fallback for unexpected errors
+         *
+         * The username parameter is mandatory as it's used to:
+         *  - Store the auth state in SecureStorage (keyed by username)
+         *  - Pre-fill the username field in the login page
+         *  - Validate the token belongs to the expected user
+         *
+         * On successful authentication, an access token is returned and refresh token is stored securely.
+         * Background token refresh is automatically scheduled based on token expiration.
+         *
+         * Error Handling:
+         * - Authentication errors (AuthError) are returned as structured JSON objects with code, message, recoverable flag, and metadata
+         * - Parameter validation errors are returned as basic Error objects with just a message
+         *
+         * Check if err.code exists to determine if it's a structured AuthError:
+         *
+         * @example
+         * login(params, (err, result) => {
+         *   if (err) {
+         *     if (err.code) {
+         *       // Structured AuthError with metadata
+         *       if (err.code === 'USER_CANCELLED') {
+         *         // User cancelled, don't show error
+         *       } else if (err.recoverable) {
+         *         showRetryButton();
+         *       } else {
+         *         showError(err.message);
+         *       }
+         *     } else {
+         *       // Basic validation error
+         *       showError(err.message);
+         *     }
+         *   }
+         * });
+         *
+         * Common error codes:
+         * - INVALID_URL: Discovery URI is not HTTPS
+         * - INVALID_REDIRECT_SCHEME: Redirect scheme not configured in AndroidManifest.xml
+         * - NO_DATA_FOUND: OAuth discovery or authorization failed
+         * - NO_EXTERNAL_USER_AGENT: Cannot create OAuth UI (Chrome Custom Tabs not available)
+         * - USER_CANCELLED: User cancelled login (recoverable)
+         * - USERNAME_MISMATCH: JWT username doesn't match parameter
+         * - FAILED_TO_SAVE_AUTH_STATE: Secure storage save failed
+         * - NETWORK_ERROR: Network connectivity issue (check recoverable flag)
          */
-         function login(argument: { clientId: string, discoveryUri: string, username: string }, callback: (err?: Error, result?: string) => void);
+         function login(argument: { clientId: string, discoveryUri: string, username: string, ephemeralSession?: boolean }, callback: (err?: AuthError | Error, result?: string) => void);
 
          /*******
-          * Start the getAuthToken function.
+          * Retrieve a valid access token for the specified user.
+          * This function will automatically refresh expired tokens using the stored refresh token.
+          *
           * @param argument: { username: string }
+          *      - username: The user whose token to retrieve
           * @param callback:
-          *      - result: string. A GeotabAuthState object.
-          *  On a successful call a GeotabAuthState object turned into JSON will be given as result
-          *  If there's an error while retrieving the access token, err will be given.
-          *  GeotabAuthState object contains the following properties:
-          * { accessToken: string }
+          *      - result: string. A GeotabAuthState object containing { accessToken: string }
+          *      - err: Error. Possible error messages:
+          *          • "No auth token found for user <username>" - User has never logged in or tokens were cleared
+          *          • "Token refresh failed for user <username>. Please try again: <details>" - Network error during refresh (recoverable); token state preserved for retry
+          *          • "Token refresh failed for user <username>. Re-authentication required: <details>" - Refresh token invalid/revoked; user must re-authenticate
+          *          • "Network error: <details>" - Connectivity issue (recoverable, will retry with exponential backoff)
+          *          • "Failed retrieving session." - Could not load auth state from secure storage
+          *          • "Get token failed" - Generic fallback for unexpected errors
+          *
+          * Token Refresh Behavior:
+          * - If token is valid and not expired, returns immediately
+          * - If token is expired, attempts automatic refresh using stored refresh token
+          * - If refresh fails due to network error (recoverable):
+          *     • Error is thrown but token state is preserved
+          *     • Background worker will retry with exponential backoff (2min → 4min → 8min → 15min max)
+          *     • Retry continues indefinitely until success or non-recoverable error
+          * - If refresh fails due to invalid/revoked refresh token (non-recoverable):
+          *     • Requires re-authentication
+          *     • If app is in foreground: automatically prompts user to re-authenticate
+          *     • If app is in background: error is thrown (cannot show UI), re-auth deferred to foreground
+          *
+          * Note: This function is called automatically by background token refresh worker.
+          * Web developers typically don't need to call this directly - tokens are managed automatically.
+          *
+          * Error Handling:
+          * - Authentication errors (AuthError) are returned as structured JSON objects with code, message, recoverable flag, and metadata
+          * - Parameter validation errors are returned as basic Error objects with just a message
+          *
+          * @example
+          * getToken(params, (err, result) => {
+          *   if (err) {
+          *     if (err.code) {
+          *       // Structured AuthError
+          *       if (err.code === 'TOKEN_REFRESH_REAUTH_REQUIRED') {
+          *         // Trigger re-login flow
+          *         redirectToLogin();
+          *       } else if (err.recoverable) {
+          *         // Network error, will auto-retry in background
+          *         showOfflineMode();
+          *       } else {
+          *         showError(err.message);
+          *       }
+          *     } else {
+          *       // Basic validation error
+          *       showError(err.message);
+          *     }
+          *   }
+          * });
+          *
+          * Common error codes:
+          * - NO_ACCESS_TOKEN_FOUND: User never logged in or tokens were cleared
+          * - TOKEN_REFRESH_FAILED: Network error during refresh (recoverable)
+          * - TOKEN_REFRESH_REAUTH_REQUIRED: Refresh token invalid, user must re-login
+          * - NETWORK_ERROR: Connectivity issue (recoverable, will retry with exponential backoff)
           */
-          function getToken(argument: { username: string }, callback: (err?: Error, result?: string) => void);
+          function getToken(argument: { username: string }, callback: (err?: AuthError | Error, result?: string) => void);
 
          /*******
-          * Start the logout function integrated with Chrome Custom Tabs.
+          * Logout the specified user and revoke their tokens.
+          * This function will:
+          *  1. Revoke the refresh token at the OAuth provider (best effort)
+          *  2. End the session at the OAuth provider
+          *  3. Delete all stored tokens for the user from SecureStorage
+          *  4. Cancel any scheduled background token refresh workers
+          *
           * @param argument: { username: string }
+          *      - username: The user to logout
           * @param callback:
-          *      - result: string.
-          *  On a successful call a string will be given as result with a success message.
-          *  If there's an error while retrieving the access token, err will be given.
+          *      - result: string. Success message "Logged out successfully"
+          *      - err: Error. Possible error messages:
+          *          • "No valid token found for user <username>" - User is not logged in or already logged out
+          *          • "Failed to create end session request" - Invalid OAuth configuration or missing ID token
+          *          • "Logout failed or was cancelled" - User cancelled the logout flow in the browser
+          *          • "Network error: <details>" - Connectivity issue during logout
+          *          • "Logout failed" - Generic logout error
+          *
+          * Note: Token revocation failures are logged but don't cause logout to fail.
+          * The local tokens are always deleted regardless of revocation success.
+          * This ensures the user is logged out locally even if the network is unavailable.
+          *
+          * Error Handling:
+          * - Authentication errors (AuthError) are returned as structured JSON objects with code, message, recoverable flag, and metadata
+          * - Parameter validation errors are returned as basic Error objects with just a message
+          *
+          * @example
+          * logout(params, (err, result) => {
+          *   if (err) {
+          *     if (err.code) {
+          *       // Structured AuthError
+          *       if (err.code === 'USER_CANCELLED') {
+          *         // User cancelled, UI already dismissed
+          *       } else {
+          *         showError(err.message);
+          *       }
+          *     } else {
+          *       // Basic validation error
+          *       showError(err.message);
+          *     }
+          *   } else {
+          *     redirectToLoginPage();
+          *   }
+          * });
+          *
+          * Common error codes:
+          * - NO_ACCESS_TOKEN_FOUND: User not logged in or already logged out
+          * - USER_CANCELLED: User cancelled logout flow (rare, logout usually completes)
           */
-          function logout(argument: { username: string }, callback: (err?: Error, result?: string) => void);
+          function logout(argument: { username: string }, callback: (err?: AuthError | Error, result?: string) => void);
     }
 
     namespace appearance {

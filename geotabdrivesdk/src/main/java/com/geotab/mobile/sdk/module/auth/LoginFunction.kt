@@ -88,8 +88,7 @@ class LoginFunction(
                 )
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
             } catch (e: Exception) {
-                com.geotab.mobile.sdk.logging.Logger.shared.error("LoginFunction", "Login failed: ${e.message}", e)
-                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, e.message ?: "Login failed")))
+                module.handleFunctionException(e, "Login", jsCallback)
             }
         }
     }

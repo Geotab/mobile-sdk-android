@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Coordinator to prevent concurrent authentication operations.
  *
- * Similar to iOS's AuthorizationCoordinator actor, this class ensures that:
+ * This class ensures that:
  * - Only one login/reauth/logout operation per user runs at a time
  * - Duplicate requests share the same result instead of creating new operations
  * - UI operations (login, reauth, logout) are serialized to prevent UI conflicts
@@ -124,7 +124,7 @@ class AuthorizationCoordinator {
     /**
      * Perform token refresh operation, deduplicating concurrent requests.
      *
-     * Note: Token refresh does NOT wait for UI operations (like iOS), allowing
+     * Note: Token refresh does NOT wait for UI operations, allowing
      * background token refreshes while user is in a login flow.
      *
      * @param username The username to refresh token for

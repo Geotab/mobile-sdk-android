@@ -38,8 +38,7 @@ class LogoutFunction(
                 module.logout(username = arguments.username)
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson("Logged out successfully")))
             } catch (e: Exception) {
-                com.geotab.mobile.sdk.logging.Logger.shared.error("LogoutFunction", "Logout failed: ${e.message}", e)
-                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, e.message ?: "Logout failed")))
+                module.handleFunctionException(e, "Logout", jsCallback)
             }
         }
     }
