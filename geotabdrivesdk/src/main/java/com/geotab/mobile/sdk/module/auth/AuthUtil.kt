@@ -626,11 +626,11 @@ class AuthUtil(
             ephemeralSession = currentEphemeralSession
         )
 
-        insertToken(geotabAuthState)
-        // Reset retry attempts after successful login or reauth
-        resetRetryAttempts(username)
-        // Reschedule the worker after successful login
-        rescheduleTokenRefreshWorker(context, geotabAuthState.username)
+        if (!isFromLoginModule) {
+            insertToken(geotabAuthState)
+            resetRetryAttempts(username)
+            rescheduleTokenRefreshWorker(context, geotabAuthState.username)
+        }
     }
 
     private suspend fun getAuthState(username: String) {
