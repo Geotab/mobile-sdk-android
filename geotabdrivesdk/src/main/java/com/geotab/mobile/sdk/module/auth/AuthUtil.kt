@@ -2,6 +2,7 @@ package com.geotab.mobile.sdk.module.auth
 
 import android.app.Activity
 import android.app.ActivityManager
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -13,10 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.Keep
 import androidx.annotation.VisibleForTesting
 import androidx.work.WorkManager
-import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
-import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
@@ -93,7 +92,6 @@ class AuthUtil(
         private const val AUTH_TOKENS = "authTokens"
         private const val DEFAULT_BASE_RETRY_INTERVAL_MS = 2 * 60 * 1000L // 2 minutes
         private const val DEFAULT_MAX_RETRY_INTERVAL_MS = 15 * 60 * 1000L // 15 minutes
-        private const val USER_CANCELLED_FLOW_MESSAGE = "User cancelled flow"
 
         /**
          * Checks if an error message is a structured JSON error from AppAuth.
@@ -144,12 +142,21 @@ class AuthUtil(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
             authScope.launch {
+                // Get context from the activity - this is available here
+                val context = activityForResult.applicationContext
+
                 if (result.resultCode == Activity.RESULT_OK) {
-                    handleLogoutResponse()
+                    handleLogoutResponse(context)
                 } else {
+                    // Extract username from authState before clearing it (if still available)
+                    val username = authState?.lastAuthorizationResponse?.request?.loginHint
+
                     sendAuthErrorMessage(
                         authError = AuthError.UserCancelledFlow,
-                        callback = logoutCallback
+                        callback = logoutCallback,
+                        context = context,
+                        username = username,
+                        flowType = Auth.FlowType.LOGOUT
                     )
                 }
             }
@@ -167,6 +174,7 @@ class AuthUtil(
      * Multiple concurrent calls for the same user will be deduplicated by AuthorizationCoordinator,
      * with all callers receiving the same result.
      *
+     * @param context Application context for error logging
      * @param clientId OAuth client ID
      * @param discoveryUri OAuth discovery URI
      * @param username The username to login
@@ -177,6 +185,7 @@ class AuthUtil(
      * @throws Exception on login failure
      */
     suspend fun login(
+        context: Context,
         clientId: String,
         discoveryUri: Uri,
         username: String,
@@ -186,6 +195,7 @@ class AuthUtil(
     ): AuthToken = withContext(authScope.coroutineContext) {
         return@withContext authCoordinator.performLogin(username) {
             performLoginInternal(
+                context,
                 clientId,
                 discoveryUri,
                 username,
@@ -197,6 +207,7 @@ class AuthUtil(
     }
 
     private suspend fun performLoginInternal(
+        context: Context,
         clientId: String,
         discoveryUri: Uri,
         username: String,
@@ -211,16 +222,9 @@ class AuthUtil(
                         val authToken = jsonUtil.fromJson<AuthToken>(result.value)
                         continuation.resume(authToken)
                     }
+
                     is Failure -> {
-                        // Check if this is a structured AuthError (JSON format)
-                        val errorMessage = result.reason.getErrorMessage()
-                        val exception = if (isStructuredAuthError(errorMessage)) {
-                            // JSON structured error - wrap in RuntimeException to preserve the JSON
-                            RuntimeException(errorMessage)
-                        } else {
-                            Exception(errorMessage)
-                        }
-                        continuation.resumeWithException(exception)
+                        continuation.resumeWithException(result.reason)
                     }
                 }
             }
@@ -248,16 +252,24 @@ class AuthUtil(
                             loginActivityResultLauncher.launch(authIntent)
                         }
                     } ?: throw IllegalStateException("AuthorizationService not initialized")
+                } catch (e: ActivityNotFoundException) {
+                    sendAuthErrorMessage(
+                        authError = AuthError.UnexpectedError(
+                            description = "No browser available to handle authentication",
+                            underlyingError = e
+                        ),
+                        callback = this@AuthUtil.loginCallback,
+                        context = context,
+                        username = username,
+                        flowType = Auth.FlowType.LOGIN
+                    )
                 } catch (e: Exception) {
                     sendAuthErrorMessage(
-                        authError = when (e) {
-                            is AuthError -> e
-                            else -> AuthError.UnexpectedError(
-                                description = "Login failed with unexpected error",
-                                underlyingError = e
-                            )
-                        },
-                        callback = this@AuthUtil.loginCallback
+                        authError = AuthError.from(e, "Login failed with unexpected error"),
+                        callback = this@AuthUtil.loginCallback,
+                        context = context,
+                        username = username,
+                        flowType = Auth.FlowType.LOGIN
                     )
                 }
             }
@@ -266,9 +278,9 @@ class AuthUtil(
 
     /**
      * Perform authorization flow with a pre-fetched configuration.
-     * Matches iOS performAuthorizationFlow - used by reauth() to avoid re-fetching configuration.
      */
     private suspend fun performAuthorizationFlow(
+        context: Context,
         configuration: AuthorizationServiceConfiguration,
         clientId: String,
         username: String,
@@ -283,16 +295,9 @@ class AuthUtil(
                         val authToken = jsonUtil.fromJson<AuthToken>(result.value)
                         continuation.resume(authToken)
                     }
+
                     is Failure -> {
-                        // Check if this is a structured AuthError (JSON format)
-                        val errorMessage = result.reason.getErrorMessage()
-                        val exception = if (isStructuredAuthError(errorMessage)) {
-                            // JSON structured error - wrap in RuntimeException to preserve the JSON
-                            RuntimeException(errorMessage)
-                        } else {
-                            Exception(errorMessage)
-                        }
-                        continuation.resumeWithException(exception)
+                        continuation.resumeWithException(result.reason)
                     }
                 }
             }
@@ -319,16 +324,24 @@ class AuthUtil(
                             loginActivityResultLauncher.launch(authIntent)
                         }
                     } ?: throw IllegalStateException("AuthorizationService not initialized")
+                } catch (e: ActivityNotFoundException) {
+                    sendAuthErrorMessage(
+                        authError = AuthError.UnexpectedError(
+                            description = "No browser available to handle re-authentication",
+                            underlyingError = e
+                        ),
+                        callback = this@AuthUtil.loginCallback,
+                        context = context,
+                        username = username,
+                        flowType = Auth.FlowType.REAUTH
+                    )
                 } catch (e: Exception) {
                     sendAuthErrorMessage(
-                        authError = when (e) {
-                            is AuthError -> e
-                            else -> AuthError.UnexpectedError(
-                                description = "Re-authentication failed with unexpected error",
-                                underlyingError = e
-                            )
-                        },
-                        callback = this@AuthUtil.loginCallback
+                        authError = AuthError.from(e, "Re-authentication failed with unexpected error"),
+                        callback = this@AuthUtil.loginCallback,
+                        context = context,
+                        username = username,
+                        flowType = Auth.FlowType.REAUTH
                     )
                 }
             }
@@ -342,7 +355,7 @@ class AuthUtil(
      * or revoked by the auth server. It reuses the existing OAuth configuration and settings
      * from the user's previous login.
      *
-     * Unlike login(), this method uses suspend/throw pattern (matching iOS async/throws):
+     * Unlike login(), this method uses suspend/throw pattern:
      * - Suspends until re-authentication completes
      * - Throws AuthError or GetTokenError on failure
      * - Returns AuthToken on success
@@ -382,6 +395,7 @@ class AuthUtil(
 
                 // Perform re-authentication using stored configuration
                 performAuthorizationFlow(
+                    context = context,
                     configuration = configuration,
                     clientId = clientId,
                     username = username,
@@ -391,7 +405,7 @@ class AuthUtil(
                 )
             } catch (e: Exception) {
                 // Check if user cancelled the reauth flow
-                if (e.message?.contains(USER_CANCELLED_FLOW_MESSAGE) == true) {
+                if (e is AuthError.UserCancelledFlow) {
                     // Clear all saved tokens and cancel background refresh for this user
                     Logger.shared.info("$TAG.reauth", "User cancelled reauth, clearing tokens and canceling refresh worker for $username")
                     try {
@@ -423,15 +437,35 @@ class AuthUtil(
                 getAuthState(username)
 
                 if (authState == null) {
-                    val message = "No valid token found for user $username"
-                    Logger.shared.error("$TAG.logout", message)
-                    throw Exception(message)
+                    throw AuthError.NoAccessTokenFoundError(username)
                 }
 
                 revokeToken()
                 launchLogoutUser()
+            } catch (e: ActivityNotFoundException) {
+                val authError = AuthError.UnexpectedError(
+                    description = "Failed to launch logout browser",
+                    underlyingError = e
+                )
+                sendAuthErrorMessage(
+                    authError = authError,
+                    callback = null, // No callback for logout
+                    context = context,
+                    username = username,
+                    flowType = Auth.FlowType.LOGOUT
+                )
+                throw authError
             } catch (e: Exception) {
-                throw Exception(e.message ?: "Failed to create end session request", e)
+                // Convert to AuthError and log to Sentry if applicable
+                val authError = if (e is AuthError) e else AuthError.from(e, "Logout failed")
+                sendAuthErrorMessage(
+                    authError = authError,
+                    callback = null, // No callback for logout
+                    context = context,
+                    username = username,
+                    flowType = Auth.FlowType.LOGOUT
+                )
+                throw authError
             } finally {
                 deleteToken(context, username)
             }
@@ -476,32 +510,77 @@ class AuthUtil(
                         rescheduleTokenRefreshWorker(context, username)
                     }
                 } catch (ex: Exception) {
-                    // Classify the error as recoverable (network issue) or non-recoverable (auth server rejection)
+                    val flowType = when {
+                        forceRefresh && (retryAttempts[username] ?: 0) > 0 -> Auth.FlowType.BACKGROUND_REFRESH_RETRY
+
+                        forceRefresh -> Auth.FlowType.BACKGROUND_REFRESH
+                        else -> Auth.FlowType.TOKEN_REFRESH
+                    }
+                    val isRecoverable = AuthError.isRecoverableError(ex)
                     when {
-                        AuthError.isRecoverableError(ex) -> {
-                            // Network error - keep auth state, user can retry
+                        // Path 1: Recoverable error (network issue) - keep auth state, user can retry
+                        isRecoverable -> {
                             Logger.shared.info("$TAG.getValidAccessToken", "Token refresh failed (recoverable): ${ex.message}")
-                            throw AuthError.TokenRefreshFailed(
+
+                            val error = AuthError.TokenRefreshFailed(
                                 username = username,
                                 underlyingError = ex,
                                 requiresReauthentication = false
                             )
+
+                            sendAuthErrorMessage(
+                                authError = error,
+                                callback = null,
+                                context = context,
+                                username = username,
+                                flowType = flowType,
+                                additionalContext = mapOf(Auth.ContextKey.RECOVERABLE to true)
+                            )
+
+                            throw error
                         }
-                        else -> {
-                            // Auth server rejected the refresh token
+
+                        // Path 2: Non-recoverable error, app in background - can't show reauth UI
+                        !isRecoverable && isAppInBackground(context) -> {
+                            Logger.shared.info("$TAG.getValidAccessToken", "Token refresh failed (requires re-auth): ${ex.message}")
+                            Logger.shared.info("$TAG.getValidAccessToken", "App is in background, deferring reauth until foreground")
+
+                            val error = AuthError.TokenRefreshFailed(
+                                username = username,
+                                underlyingError = ex,
+                                requiresReauthentication = true
+                            )
+
+                            sendAuthErrorMessage(
+                                authError = error,
+                                callback = null,
+                                context = context,
+                                username = username,
+                                flowType = flowType,
+                                additionalContext = mapOf(
+                                    Auth.ContextKey.RECOVERABLE to false,
+                                    Auth.ContextKey.REQUIRES_REAUTH to true
+                                )
+                            )
+
+                            throw error
+                        }
+
+                        // Path 3: Non-recoverable error, app in foreground - trigger reauth now
+                        !isRecoverable && !isAppInBackground(context) -> {
                             Logger.shared.info("$TAG.getValidAccessToken", "Token refresh failed (requires re-auth): ${ex.message}")
 
-                            // Check if app is in background - cannot show UI for reauth
-                            if (isAppInBackground(context)) {
-                                Logger.shared.info("$TAG.getValidAccessToken", "App is in background, deferring reauth until foreground")
-                                throw AuthError.TokenRefreshFailed(
-                                    username = username,
-                                    underlyingError = ex,
-                                    requiresReauthentication = true
-                                )
-                            }
+                            val error = AuthError.from(ex, "Token refresh failed - triggering reauth")
 
-                            // App is in foreground, trigger re-auth
+                            sendAuthErrorMessage(
+                                authError = error,
+                                callback = null,
+                                context = context,
+                                username = username,
+                                flowType = flowType,
+                                additionalContext = mapOf(Auth.ContextKey.REQUIRES_REAUTH to true)
+                            )
+
                             return@performTokenRefresh reauth(context, username)
                         }
                     }
@@ -512,37 +591,45 @@ class AuthUtil(
     }
 
     internal suspend fun handleAuthorizationResponse(context: Context, data: Intent?) {
+        // Extract response and exception
+        val response = data?.let { AuthorizationResponse.fromIntent(it) }
+        val exception = data?.let { AuthorizationException.fromIntent(it) }
+
+        // Extract username from the response (if available)
+        val username = response?.request?.loginHint
+
+        val flowType = if (response?.request?.state == null) Auth.FlowType.LOGIN else Auth.FlowType.REAUTH
+
         if (data == null) {
             sendAuthErrorMessage(
                 authError = AuthError.UserCancelledFlow,
-                callback = loginCallback
+                callback = loginCallback,
+                context = context,
+                username = username,
+                flowType = flowType
             )
             return
         }
 
-        val response = AuthorizationResponse.fromIntent(data)
-        val exception = AuthorizationException.fromIntent(data)
-
         when {
             exception != null -> {
-                // Check if user cancelled the flow
-                val authError = if (exception.type == AuthorizationException.TYPE_GENERAL_ERROR &&
-                    exception.code == AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code
-                ) {
-                    AuthError.UserCancelledFlow
-                } else {
-                    // Map authorization exception to appropriate AuthError
-                    AuthError.NetworkError(exception)
-                }
+                // Convert AuthorizationException to appropriate AuthError type
+                val authError = AuthError.from(exception, "Authorization failed")
                 sendAuthErrorMessage(
                     authError = authError,
-                    callback = loginCallback
+                    callback = loginCallback,
+                    context = context,
+                    username = username,
+                    flowType = flowType
                 )
             }
             response == null -> {
                 sendAuthErrorMessage(
                     authError = AuthError.NoDataFoundError,
-                    callback = loginCallback
+                    callback = loginCallback,
+                    context = context,
+                    username = username,
+                    flowType = flowType
                 )
             }
             else -> {
@@ -553,27 +640,66 @@ class AuthUtil(
                     handleSuccessfulTokenExchange(context, response, tokenResponse)
                 } catch (e: Exception) {
                     sendAuthErrorMessage(
-                        authError = AuthError.UnexpectedError(
-                            description = "Token exchange failed with unexpected error",
-                            underlyingError = e
-                        ),
-                        callback = loginCallback
+                        authError = AuthError.from(e, "Token exchange failed with unexpected error"),
+                        callback = loginCallback,
+                        context = context,
+                        username = username,
+                        flowType = flowType
                     )
                 }
             }
         }
     }
 
+    /**
+     * Sends an auth error message and optionally logs to Sentry.
+     * Centralizes error handling for all auth operations (login, reauth, token refresh, logout).
+     *
+     * @param authError The authentication error that occurred
+     * @param callback The callback to invoke with the error
+     * @param context Application context for app state detection (optional, required for Sentry logging)
+     * @param username The username associated with the auth operation (optional, defaults to "unknown" for Sentry)
+     * @param flowType The type of auth flow (optional, required for Sentry logging)
+     * @param additionalContext Optional additional context for Sentry logging
+     */
     private fun sendAuthErrorMessage(
         authError: AuthError,
-        callback: ((Result<Success<String>, Failure>) -> Unit)? = loginCallback
+        callback: ((Result<Success<String>, Failure>) -> Unit)? = null,
+        context: Context? = null,
+        username: String? = null,
+        flowType: Auth.FlowType? = null,
+        additionalContext: Map<Auth.ContextKey, Any>? = null
     ) {
-        Logger.shared.error(
-            "$TAG.sendAuthErrorMessage",
-            authError.fallbackErrorMessage
-        )
+        // Capture unexpected errors in Sentry with structured context
+        if (context != null && flowType != null && AuthError.shouldBeCaptured(authError)) {
+            // Use authFailure for Sentry capture - this will also log to Logcat
+            Logger.shared.authFailure(
+                context = context,
+                username = username ?: "unknown",
+                flowType = flowType,
+                error = authError,
+                additionalContext = additionalContext
+            )
+        } else {
+            // Expected operational errors: just log to Logcat, not Sentry
+            val logMessage = buildString {
+                append("Auth failed")
+                if (username != null) {
+                    append(" for user $username")
+                }
+                if (flowType != null) {
+                    append(" (${flowType.value})")
+                }
+                append(": ${authError.fallbackErrorMessage}")
+            }
+            Logger.shared.warn(
+                "$TAG.sendAuthErrorMessage",
+                logMessage
+            )
+        }
+
         callback?.let {
-            it(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, authError.errorDescription)))
+            it(Failure(authError))
         }
     }
 
@@ -586,10 +712,16 @@ class AuthUtil(
         val tempAuthState = AuthState(authResponse, tokenResponse, null)
 
         val username = authResponse.request.loginHint
+        val flowType =
+            if (authResponse.request.state == null) Auth.FlowType.LOGIN else Auth.FlowType.REAUTH
+
         if (username == null) {
             sendAuthErrorMessage(
                 authError = AuthError.MissingAuthData,
-                callback = loginCallback
+                callback = loginCallback,
+                context = context,
+                username = null,
+                flowType = flowType
             )
             return
         }
@@ -597,7 +729,7 @@ class AuthUtil(
         // Validate username matches the one in the access token
         // If validation fails, performUsernameValidation will send error via callback and return early
         // Pass tempAuthState so it can be revoked if validation fails, without affecting the global authState
-        if (!performUsernameValidation(username, tokenResponse.accessToken, context, tempAuthState)) {
+        if (!performUsernameValidation(username, tokenResponse.accessToken, context, tempAuthState, flowType)) {
             return // Global authState remains unchanged (previous user or null)
         }
 
@@ -852,7 +984,9 @@ class AuthUtil(
         }
     }
 
-    internal fun handleLogoutResponse() {
+    internal fun handleLogoutResponse(context: Context) {
+        val username = authState?.lastAuthorizationResponse?.request?.loginHint
+
         try {
             authState = null
 
@@ -867,7 +1001,10 @@ class AuthUtil(
                     is AuthError -> ex
                     else -> AuthError.RevokeTokenFailed(ex)
                 },
-                callback = logoutCallback
+                callback = logoutCallback,
+                context = context,
+                username = username,
+                flowType = Auth.FlowType.LOGOUT
             )
         }
     }
@@ -952,7 +1089,6 @@ class AuthUtil(
      * Checks if the app is currently in the background.
      * Returns true if no activities are visible to the user.
      */
-    @VisibleForTesting
     internal fun isAppInBackground(context: Context): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
             ?: return false
@@ -976,13 +1112,15 @@ class AuthUtil(
      * @param accessToken The JWT access token to validate (can be null)
      * @param context Application context for cleanup operations
      * @param authStateToValidate The AuthState being validated (will be revoked if validation fails)
+     * @param flowType The type of auth flow for error logging
      * @return true if validation passed or was skipped, false if validation failed
      */
     private suspend fun performUsernameValidation(
         username: String,
         accessToken: String?,
         context: Context,
-        authStateToValidate: AuthState
+        authStateToValidate: AuthState,
+        flowType: Auth.FlowType
     ): Boolean {
         // Skip validation if username is empty or access token is missing
         if (username.isEmpty() || accessToken == null) {
@@ -1000,7 +1138,10 @@ class AuthUtil(
         } catch (e: AuthError) {
             sendAuthErrorMessage(
                 authError = e,
-                callback = loginCallback
+                callback = loginCallback,
+                context = context,
+                username = username,
+                flowType = flowType
             )
             // Return false to signal validation failed
             // Don't re-throw - sendAuthErrorMessage already resumes the continuation with error

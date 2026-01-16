@@ -9,7 +9,6 @@ import com.geotab.mobile.sdk.module.auth.AuthToken
 import com.geotab.mobile.sdk.module.auth.AuthUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import net.openid.appauth.AuthorizationService
 
 class LoginModule(
@@ -60,6 +59,7 @@ class LoginModule(
 
         return try {
             authUtil.login(
+                context = context,
                 clientId = clientId,
                 discoveryUri = discoveryUri,
                 username = loginHint,
@@ -70,21 +70,7 @@ class LoginModule(
             }
         } catch (e: Exception) {
             isAuthServiceDisposed = true
-            Logger.shared.error(TAG, "Login failed: ${e.message}", e)
             throw e
         }
-    }
-
-    fun handleAuthToken(username: String): AuthToken? {
-        Logger.shared.info(TAG, "handleAuthToken function was called")
-        val authToken = runBlocking {
-            try {
-                authUtil.getValidAccessToken(context, username)
-            } catch (e: Exception) {
-                Logger.shared.error(TAG, "Failed to get valid access token for $username: ${e.message}", e)
-                null
-            }
-        }
-        return authToken
     }
 }

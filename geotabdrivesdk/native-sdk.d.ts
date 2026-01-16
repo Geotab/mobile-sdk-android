@@ -546,7 +546,10 @@ declare namespace geotabModules {
                 | 'REVOKE_TOKEN_FAILED'
                 | 'NETWORK_ERROR'
                 | 'UNEXPECTED_RESPONSE'
-                | 'UNEXPECTED_ERROR';
+                | 'UNEXPECTED_ERROR'
+                | 'OID_GENERAL_ERROR'
+                | 'OAUTH_AUTHORIZATION_ERROR'
+                | 'OAUTH_TOKEN_ERROR';
 
             /**
              * Human-readable error message.

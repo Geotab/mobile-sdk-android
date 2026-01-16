@@ -41,7 +41,7 @@ class GetTokenFunction(
                     jsCallback(Success(JsonUtil.toJson(authToken)))
                 } else {
                     val error = AuthError.NoAccessTokenFoundError(arguments.username)
-                    jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, error.errorDescription)))
+                    jsCallback(Failure(error))
                 }
             } catch (e: Exception) {
                 module.handleFunctionException(e, "Get token", jsCallback)

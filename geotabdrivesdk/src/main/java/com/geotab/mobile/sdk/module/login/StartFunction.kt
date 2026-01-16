@@ -88,7 +88,6 @@ class StartFunction(
                 )
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
             } catch (e: Exception) {
-                com.geotab.mobile.sdk.logging.Logger.shared.error("StartFunction", "Login failed: ${e.message}", e)
                 val errorMessage = if (e is com.geotab.mobile.sdk.module.auth.AuthError) e.errorDescription else e.message ?: "Login failed"
                 jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, errorMessage)))
             }

@@ -4,6 +4,7 @@ import android.webkit.WebView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import com.geotab.mobile.sdk.logging.Logger
+import com.geotab.mobile.sdk.module.auth.AuthUtil
 
 /**
  * Base class for Geotab fragments that interact with WebView via JavaScript bridge.
@@ -50,5 +51,51 @@ abstract class BaseGeotabFragment : Fragment() {
             return // Non-local return - exits the calling function
         }
         callback()
+    }
+
+    /**
+     * Builds JavaScript code to invoke error callback with proper error formatting.
+     * Supports both simple errors and structured JSON errors (e.g., AuthError).
+     *
+     * @param callback JavaScript callback function name
+     * @param reason Error object containing error code and message
+     * @return JavaScript code string to execute
+     */
+    protected fun buildErrorJavaScript(callback: String, reason: Error): String {
+        val errorMessage = reason.getErrorMessage()
+
+        // Check if error message is structured JSON (starts with '{' and contains required fields)
+        val isStructuredError = AuthUtil.isStructuredAuthError(errorMessage)
+
+        return if (!isStructuredError) {
+            // Basic error message - create simple Error object
+            val fullMessage = "${reason.getErrorCode()}: $errorMessage"
+            """ try {
+                var t = $callback(new Error(`$fullMessage`));
+                if (t instanceof Promise) {
+                    t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
+                }
+            } catch(err) {
+                console.log(">>>>> Unexpected exception in callback: ", err);
+            }
+            """.trimIndent()
+        } else {
+            // Structured error with metadata - directly use JSON as JavaScript object
+            // Note: We explicitly set message as enumerable property so JSON.stringify works
+            """
+            try {
+                var json = $errorMessage;
+                var error = new Error(json.message);
+                Object.assign(error, json);
+                Object.defineProperty(error, 'message', { value: json.message, enumerable: true, writable: true });
+                var t = $callback(error);
+                if (t instanceof Promise) {
+                    t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
+                }
+            } catch(err) {
+                console.log(">>>>> Unexpected exception in callback: ", err);
+            }
+            """.trimIndent()
+        }
     }
 }

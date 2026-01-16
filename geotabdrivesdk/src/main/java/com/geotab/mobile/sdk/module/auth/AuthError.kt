@@ -1,5 +1,7 @@
 package com.geotab.mobile.sdk.module.auth
 
+import com.geotab.mobile.sdk.Error
+import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.util.JsonUtil
 import net.openid.appauth.AuthorizationException
 import java.io.IOException
@@ -17,7 +19,7 @@ import javax.net.ssl.SSLException
  * - [errorCode]: Programmatic error code for web developers (e.g., "TOKEN_REFRESH_FAILED")
  * - [isRecoverable]: Whether this error is recoverable (can retry)
  */
-sealed class AuthError : Exception() {
+sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
     /**
      * Failed parsing session.
      */
@@ -141,6 +143,42 @@ sealed class AuthError : Exception() {
     ) : AuthError()
 
     /**
+     * OAuth general error (TYPE_GENERAL_ERROR).
+     * Examples: network errors, server errors, JSON parsing, user cancellation, etc.
+     *
+     * @param code The OAuth error code from GeneralErrors
+     * @param underlyingError The underlying AuthorizationException
+     */
+    data class OAuthGeneralError(
+        val code: Int,
+        val underlyingError: Throwable
+    ) : AuthError()
+
+    /**
+     * OAuth authorization error (TYPE_OAUTH_AUTHORIZATION_ERROR).
+     * Examples: access_denied, invalid_request, server_error, etc.
+     *
+     * @param code The OAuth authorization error code
+     * @param description Error description from the OAuth provider
+     */
+    data class OAuthAuthorizationError(
+        val code: Int,
+        val description: String
+    ) : AuthError()
+
+    /**
+     * OAuth token error (TYPE_OAUTH_TOKEN_ERROR).
+     * Examples: invalid_grant, invalid_client, unauthorized_client, etc.
+     *
+     * @param code The OAuth token error code
+     * @param description Error description from the OAuth provider
+     */
+    data class OAuthTokenError(
+        val code: Int,
+        val description: String
+    ) : AuthError()
+
+    /**
      * Returns the error code for programmatic error handling.
      * Examples: "TOKEN_REFRESH_FAILED", "USERNAME_MISMATCH", "USER_CANCELLED"
      */
@@ -165,6 +203,9 @@ sealed class AuthError : Exception() {
             is NetworkError -> "NETWORK_ERROR"
             is UnexpectedResponse -> "UNEXPECTED_RESPONSE"
             is UnexpectedError -> "UNEXPECTED_ERROR"
+            is OAuthGeneralError -> "OID_GENERAL_ERROR"
+            is OAuthAuthorizationError -> "OAUTH_AUTHORIZATION_ERROR"
+            is OAuthTokenError -> "OAUTH_TOKEN_ERROR"
         }
 
     /**
@@ -179,6 +220,8 @@ sealed class AuthError : Exception() {
             is UnexpectedResponse -> statusCode in 500..599
             is UserCancelledFlow -> true
             is UnexpectedError -> underlyingError?.let { isRecoverableError(it) } ?: false
+            is OAuthGeneralError -> isRecoverableError(underlyingError)
+            is OAuthAuthorizationError, is OAuthTokenError -> false
             else -> false
         }
 
@@ -217,6 +260,9 @@ sealed class AuthError : Exception() {
                     "An unexpected authentication error occurred: $description"
                 }
             }
+            is OAuthGeneralError -> "AppAuth general error (code $code): ${underlyingError.localizedMessage}"
+            is OAuthAuthorizationError -> "OAuth authorization error (code $code): $description"
+            is OAuthTokenError -> "OAuth token error (code $code): $description"
         }
 
     /**
@@ -245,10 +291,102 @@ sealed class AuthError : Exception() {
     override val message: String
         get() = errorDescription
 
+    /**
+     * Override getErrorMessage() to return structured JSON error description.
+     * This ensures BaseGeotabFragment.buildErrorJavaScript() receives the JSON format.
+     */
+    override fun getErrorMessage(): String {
+        return errorDescription
+    }
+
     companion object {
         private val NETWORK_ERROR_KEYWORDS = listOf("network", "connection", "timeout", "unreachable")
         private val OAUTH_ERROR_KEYWORDS = listOf("invalid_grant", "invalid_client", "unauthorized", "invalid_token")
         private val HTTP_STATUS_REGEX = Regex("""HTTP\s+(\d{3})""")
+
+        /**
+         * Determines if an error should be captured in Sentry for investigation.
+         * Returns `true` for unexpected errors that indicate bugs, configuration issues, or system failures.
+         * Returns `false` for expected operational errors (user actions, network issues, normal auth flows).
+         */
+        fun shouldBeCaptured(error: AuthError): Boolean {
+            return when (error) {
+                // User actions - don't capture
+                is UserCancelledFlow -> false
+
+                // Network errors - don't capture (expected operational issues)
+                is NetworkError -> false
+
+                // HTTP errors - 4xx might indicate config issues, 5xx are expected
+                is UnexpectedResponse -> error.statusCode in 400..499
+
+                // No access token - expected when user not logged in
+                is NoAccessTokenFoundError -> false
+
+                // Wrapped errors - check underlying
+                is TokenRefreshFailed -> shouldBeCaptured(error.underlyingError)
+                is UnexpectedError -> error.underlyingError?.let { shouldBeCaptured(it) } ?: true
+
+                // AppAuth error cases
+                is OAuthGeneralError -> shouldCaptureOAuthGeneralError(error.code)
+                is OAuthAuthorizationError -> shouldCaptureOAuthAuthorizationError(error.code)
+                is OAuthTokenError -> shouldCaptureOAuthTokenError(error.code)
+
+                // All other errors are unexpected and should be captured
+                else -> true
+            }
+        }
+
+        private fun shouldBeCaptured(error: Throwable): Boolean {
+            // If it's already an AuthError, use the AuthError logic
+            if (error is AuthError) {
+                return shouldBeCaptured(error)
+            }
+
+            // Check if it's an AuthorizationException
+            if (error is AuthorizationException) {
+                return when (error.type) {
+                    AuthorizationException.TYPE_GENERAL_ERROR -> shouldCaptureOAuthGeneralError(error.code)
+                    AuthorizationException.TYPE_OAUTH_AUTHORIZATION_ERROR -> shouldCaptureOAuthAuthorizationError(error.code)
+                    AuthorizationException.TYPE_OAUTH_TOKEN_ERROR -> shouldCaptureOAuthTokenError(error.code)
+                    else -> true // Unknown type, capture it
+                }
+            }
+
+            // Network errors are expected
+            if (error is UnknownHostException || error is SocketTimeoutException) {
+                return false
+            }
+
+            // Unknown errors should be captured
+            return true
+        }
+
+        private fun shouldCaptureOAuthGeneralError(code: Int): Boolean {
+            // Expected operational errors - don't capture
+            val expectedErrors = setOf(
+                AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code,
+                AuthorizationException.GeneralErrors.PROGRAM_CANCELED_AUTH_FLOW.code,
+                AuthorizationException.GeneralErrors.NETWORK_ERROR.code,
+                AuthorizationException.GeneralErrors.SERVER_ERROR.code
+            )
+            return code !in expectedErrors
+        }
+
+        private fun shouldCaptureOAuthAuthorizationError(code: Int): Boolean {
+            // Expected user actions or transient server issues - don't capture
+            val expectedErrors = setOf(
+                AuthorizationException.AuthorizationRequestErrors.ACCESS_DENIED.code,
+                AuthorizationException.AuthorizationRequestErrors.SERVER_ERROR.code,
+                AuthorizationException.AuthorizationRequestErrors.TEMPORARILY_UNAVAILABLE.code
+            )
+            return code !in expectedErrors
+        }
+
+        private fun shouldCaptureOAuthTokenError(code: Int): Boolean {
+            // invalid_grant is a normal error when refresh token expires - don't capture
+            return code != AuthorizationException.TokenRequestErrors.INVALID_GRANT.code
+        }
 
         /**
          * Determines if an error from token refresh is recoverable (network issue) or requires re-authentication (auth server rejection).
@@ -372,6 +510,51 @@ sealed class AuthError : Exception() {
 
         private fun String.containsOAuthError(): Boolean {
             return OAUTH_ERROR_KEYWORDS.any { contains(it) }
+        }
+
+        /**
+         * Converts an AppAuth AuthorizationException or system error to a specific AuthError type.
+         *
+         * @param error The error to convert
+         * @param description Optional description for unexpected errors. Defaults to "Unhandled error"
+         * @return A specific AuthError case
+         */
+        fun from(error: Throwable, description: String = "Unhandled error"): AuthError {
+            // If already AuthError, return as-is
+            if (error is AuthError) {
+                return error
+            }
+
+            // Check if this is an AuthorizationException (from AppAuth library)
+            if (error is AuthorizationException) {
+                if (error.type == AuthorizationException.TYPE_GENERAL_ERROR) {
+                    return when (error.code) {
+                        AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code -> UserCancelledFlow
+                        AuthorizationException.GeneralErrors.NETWORK_ERROR.code -> NetworkError(error)
+                        else -> OAuthGeneralError(code = error.code, underlyingError = error)
+                    }
+                }
+
+                return when (error.type) {
+                    AuthorizationException.TYPE_OAUTH_AUTHORIZATION_ERROR -> {
+                        val errorDescription = error.error ?: error.localizedMessage ?: "Unknown authorization error"
+                        OAuthAuthorizationError(code = error.code, description = errorDescription)
+                    }
+                    AuthorizationException.TYPE_OAUTH_TOKEN_ERROR -> {
+                        val errorDescription = error.error ?: error.localizedMessage ?: "Unknown token error"
+                        OAuthTokenError(code = error.code, description = errorDescription)
+                    }
+                    else -> UnexpectedError(description = description, underlyingError = error)
+                }
+            }
+
+            // Check for network errors
+            if (error is UnknownHostException || error is SocketTimeoutException || error is IOException) {
+                return NetworkError(error)
+            }
+
+            // Fallback to generic unexpected error with provided description
+            return UnexpectedError(description = description, underlyingError = error)
         }
     }
 }

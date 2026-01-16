@@ -368,19 +368,8 @@ class MyGeotabFragment :
                 is Failure -> {
                     this.webView.post {
                         executeIfValid {
-                            this.webView.evaluateJavascript(
-                                """
-                                try {
-                                    var t = $callback(new Error(`${result.reason.getErrorCode()}: ${result.reason.getErrorMessage()}`));
-                                    if (t instanceof Promise) {
-                                        t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
-                                    }
-                                } catch(err) {
-                                    console.log(">>>>> Unexpected exception: ", err);
-                                }
-                                """.trimIndent(),
-                                null
-                            )
+                            val jsScript = buildErrorJavaScript(callback, result.reason)
+                            this.webView.evaluateJavascript(jsScript, null)
                         }
                     }
                 }

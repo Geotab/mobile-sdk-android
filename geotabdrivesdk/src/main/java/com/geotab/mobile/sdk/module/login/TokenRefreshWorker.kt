@@ -92,10 +92,6 @@ class TokenRefreshWorker(
                 Result.failure()
             }
         } catch (e: Exception) {
-            Logger.shared.error(
-                TAG,
-                "Token refresh failed with an exception: ${e.message}"
-            )
             // Check if this is a recoverable error that should be retried
             when (e) {
                 is AuthError.TokenRefreshFailed -> {

@@ -69,6 +69,7 @@ class AuthModule(
 
         return try {
             authUtil.login(
+                context = context,
                 clientId = clientId,
                 discoveryUri = discoveryUri,
                 username = username,
