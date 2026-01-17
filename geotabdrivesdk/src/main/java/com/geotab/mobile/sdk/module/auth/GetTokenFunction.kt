@@ -28,19 +28,22 @@ class GetTokenFunction(
     ) {
         val arguments = transformOrInvalidate(jsonString, jsCallback) ?: return
 
-        @Suppress("SENSELESS_COMPARISON")
-        if (arguments.username.isNullOrBlank()) {
-            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, "Username is required")))
+        // Trim username (returns empty string if null) and validate it's not empty
+        @Suppress("UNNECESSARY_SAFE_CALL")
+        val trimmedUsername = arguments.username?.trim() ?: ""
+
+        if (trimmedUsername.isEmpty()) {
+            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, AuthModule.USERNAME_REQUIRED_ERROR_MESSAGE)))
             return
         }
 
         module.scope.launch {
             try {
-                val authToken = module.handleAuthToken(arguments.username)
+                val authToken = module.handleAuthToken(trimmedUsername)
                 if (authToken != null) {
                     jsCallback(Success(JsonUtil.toJson(authToken)))
                 } else {
-                    val error = AuthError.NoAccessTokenFoundError(arguments.username)
+                    val error = AuthError.NoAccessTokenFoundError(trimmedUsername)
                     jsCallback(Failure(error))
                 }
             } catch (e: Exception) {

@@ -22,6 +22,7 @@ class AuthModule(
     companion object {
         const val MODULE_NAME = "auth"
         const val TAG = "authModule"
+        const val USERNAME_REQUIRED_ERROR_MESSAGE = "Username is required"
     }
 
     init {

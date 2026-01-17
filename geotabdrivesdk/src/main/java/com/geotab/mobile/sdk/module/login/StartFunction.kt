@@ -37,10 +37,18 @@ class StartFunction(
         @Suppress("SENSELESS_COMPARISON")
         if (
             arguments.clientId.isNullOrBlank() ||
-            arguments.discoveryUri.isNullOrBlank() ||
-            arguments.loginHint.isNullOrBlank()
+            arguments.discoveryUri.isNullOrBlank()
         ) {
             jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
+            return
+        }
+
+        // Trim loginHint (returns empty string if null) and validate it's not empty
+        @Suppress("UNNECESSARY_SAFE_CALL")
+        val trimmedLoginHint = arguments.loginHint?.trim() ?: ""
+
+        if (trimmedLoginHint.isEmpty()) {
+            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, "LoginHint is required")))
             return
         }
 
@@ -83,7 +91,7 @@ class StartFunction(
                 val authToken = module.login(
                     clientId = arguments.clientId,
                     discoveryUri = discoveryUri,
-                    loginHint = arguments.loginHint,
+                    loginHint = trimmedLoginHint,
                     redirectScheme = module.context.resources.getString(resourceId).toUri()
                 )
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))

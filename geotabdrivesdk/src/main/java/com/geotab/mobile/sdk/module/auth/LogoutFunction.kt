@@ -27,15 +27,18 @@ class LogoutFunction(
     ) {
         val arguments = transformOrInvalidate(jsonString, jsCallback) ?: return
 
-        @Suppress("SENSELESS_COMPARISON")
-        if (arguments.username.isNullOrBlank()) {
-            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, "Username is required")))
+        // Trim username (returns empty string if null) and validate it's not empty
+        @Suppress("UNNECESSARY_SAFE_CALL")
+        val trimmedUsername = arguments.username?.trim() ?: ""
+
+        if (trimmedUsername.isEmpty()) {
+            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, AuthModule.USERNAME_REQUIRED_ERROR_MESSAGE)))
             return
         }
 
         module.scope.launch {
             try {
-                module.logout(username = arguments.username)
+                module.logout(username = trimmedUsername)
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson("Logged out successfully")))
             } catch (e: Exception) {
                 module.handleFunctionException(e, "Logout", jsCallback)

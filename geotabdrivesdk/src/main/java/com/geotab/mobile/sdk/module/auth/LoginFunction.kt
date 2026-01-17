@@ -37,10 +37,18 @@ class LoginFunction(
         @Suppress("SENSELESS_COMPARISON")
         if (
             arguments.clientId.isNullOrBlank() ||
-            arguments.discoveryUri.isNullOrBlank() ||
-            arguments.username.isNullOrBlank()
+            arguments.discoveryUri.isNullOrBlank()
         ) {
             jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
+            return
+        }
+
+        // Trim username (returns empty string if null) and validate it's not empty
+        @Suppress("UNNECESSARY_SAFE_CALL")
+        val trimmedUsername = arguments.username?.trim() ?: ""
+
+        if (trimmedUsername.isEmpty()) {
+            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, AuthModule.USERNAME_REQUIRED_ERROR_MESSAGE)))
             return
         }
 
@@ -83,7 +91,7 @@ class LoginFunction(
                 val authToken = module.login(
                     clientId = arguments.clientId,
                     discoveryUri = discoveryUri,
-                    username = arguments.username,
+                    username = trimmedUsername,
                     redirectScheme = module.context.resources.getString(resourceId).toUri()
                 )
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
