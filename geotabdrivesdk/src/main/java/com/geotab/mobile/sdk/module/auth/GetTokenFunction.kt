@@ -37,13 +37,16 @@ class GetTokenFunction(
             return
         }
 
+        // Normalize to lowercase
+        val normalizedUsername = trimmedUsername.lowercase()
+
         module.scope.launch {
             try {
-                val authToken = module.handleAuthToken(trimmedUsername)
+                val authToken = module.handleAuthToken(normalizedUsername)
                 if (authToken != null) {
                     jsCallback(Success(JsonUtil.toJson(authToken)))
                 } else {
-                    val error = AuthError.NoAccessTokenFoundError(trimmedUsername)
+                    val error = AuthError.NoAccessTokenFoundError(normalizedUsername)
                     jsCallback(Failure(error))
                 }
             } catch (e: Exception) {

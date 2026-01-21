@@ -52,6 +52,9 @@ class LoginFunction(
             return
         }
 
+        // Normalize to lowercase
+        val normalizedUsername = trimmedUsername.lowercase()
+
         val discoveryUri = arguments.discoveryUri.toUri().normalizeScheme()
 
         if (discoveryUri.scheme != "https") {
@@ -91,7 +94,7 @@ class LoginFunction(
                 val authToken = module.login(
                     clientId = arguments.clientId,
                     discoveryUri = discoveryUri,
-                    username = trimmedUsername,
+                    username = normalizedUsername,
                     redirectScheme = module.context.resources.getString(resourceId).toUri()
                 )
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))

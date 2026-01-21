@@ -87,6 +87,18 @@ class AuthUtil(
     // Token refresh retry tracking
     private val retryAttempts: MutableMap<String, Int> = mutableMapOf()
 
+    // Store pending auth metadata for the current launch
+    private var pendingAuthMetadata: AuthMetadata? = null
+
+    /**
+     * Stores username and flow type for an OAuth request in progress.
+     * Used to provide error context to Sentry when OAuth fails.
+     */
+    data class AuthMetadata(
+        val flowType: Auth.FlowType,
+        val username: String
+    )
+
     companion object {
         private const val TAG = "AuthUtil"
         private const val AUTH_TOKENS = "authTokens"
@@ -129,8 +141,17 @@ class AuthUtil(
         loginActivityResultLauncher = activityForResult.registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
+            // Retrieve and clear metadata
+            val metadata = pendingAuthMetadata
+            pendingAuthMetadata = null
+
             authScope.launch {
-                handleAuthorizationResponse(activityForResult.applicationContext, result.data)
+                handleAuthorizationResponse(
+                    context = activityForResult.applicationContext,
+                    data = result.data,
+                    username = metadata?.username,
+                    flowType = metadata?.flowType
+                )
             }
         }
     }
@@ -233,6 +254,8 @@ class AuthUtil(
                 Logger.shared.debug("$TAG.login", "Starting login for user: $username")
                 isFromLoginModule = comingFromLoginModule
                 currentEphemeralSession = ephemeralSession
+                // Store metadata BEFORE launching
+                pendingAuthMetadata = AuthMetadata(Auth.FlowType.LOGIN, username)
                 try {
                     val serviceConfiguration = fetchFromUrlSuspend(discoveryUri)
 
@@ -253,6 +276,7 @@ class AuthUtil(
                         }
                     } ?: throw IllegalStateException("AuthorizationService not initialized")
                 } catch (e: ActivityNotFoundException) {
+                    pendingAuthMetadata = null
                     sendAuthErrorMessage(
                         authError = AuthError.UnexpectedError(
                             description = "No browser available to handle authentication",
@@ -264,6 +288,7 @@ class AuthUtil(
                         flowType = Auth.FlowType.LOGIN
                     )
                 } catch (e: Exception) {
+                    pendingAuthMetadata = null
                     sendAuthErrorMessage(
                         authError = AuthError.from(e, "Login failed with unexpected error"),
                         callback = this@AuthUtil.loginCallback,
@@ -306,6 +331,9 @@ class AuthUtil(
                 Logger.shared.debug("$TAG.performAuthorizationFlow", "Starting authorization flow for user: $username")
                 isFromLoginModule = comingFromLoginModule
                 currentEphemeralSession = ephemeralSession
+
+                // Store metadata BEFORE launching
+                pendingAuthMetadata = AuthMetadata(Auth.FlowType.REAUTH, username)
                 try {
                     val authRequest = AuthorizationRequest.Builder(
                         configuration,
@@ -315,7 +343,6 @@ class AuthUtil(
                     )
                         .setScope("openid profile email")
                         .setLoginHint(username)
-                        .setState(username)
                         .build()
 
                     authService?.let { authService ->
@@ -325,6 +352,7 @@ class AuthUtil(
                         }
                     } ?: throw IllegalStateException("AuthorizationService not initialized")
                 } catch (e: ActivityNotFoundException) {
+                    pendingAuthMetadata = null
                     sendAuthErrorMessage(
                         authError = AuthError.UnexpectedError(
                             description = "No browser available to handle re-authentication",
@@ -336,6 +364,7 @@ class AuthUtil(
                         flowType = Auth.FlowType.REAUTH
                     )
                 } catch (e: Exception) {
+                    pendingAuthMetadata = null
                     sendAuthErrorMessage(
                         authError = AuthError.from(e, "Re-authentication failed with unexpected error"),
                         callback = this@AuthUtil.loginCallback,
@@ -499,7 +528,7 @@ class AuthUtil(
                     insertToken(
                         GeotabAuthState(
                             authState = state.jsonSerializeString(),
-                            username = username,
+                            username = username.lowercase(),
                             ephemeralSession = currentGeotabAuthState?.ephemeralSession ?: false
                         )
                     )
@@ -590,15 +619,15 @@ class AuthUtil(
         }
     }
 
-    internal suspend fun handleAuthorizationResponse(context: Context, data: Intent?) {
+    internal suspend fun handleAuthorizationResponse(
+        context: Context,
+        data: Intent?,
+        username: String?,
+        flowType: Auth.FlowType?
+    ) {
         // Extract response and exception
         val response = data?.let { AuthorizationResponse.fromIntent(it) }
         val exception = data?.let { AuthorizationException.fromIntent(it) }
-
-        // Extract username from the response (if available)
-        val username = response?.request?.loginHint
-
-        val flowType = if (response?.request?.state == null) Auth.FlowType.LOGIN else Auth.FlowType.REAUTH
 
         if (data == null) {
             sendAuthErrorMessage(
@@ -754,7 +783,7 @@ class AuthUtil(
 
         val geotabAuthState = GeotabAuthState(
             authState = authState?.jsonSerializeString() ?: "",
-            username = username,
+            username = username.lowercase(),
             ephemeralSession = currentEphemeralSession
         )
 
@@ -843,7 +872,7 @@ class AuthUtil(
         try {
             val tokensList = getAllTokens()
 
-            tokensList.removeIf { it.username == username }
+            tokensList.removeIf { it.username == username.lowercase() }
 
             val geotabAuthStateChars = JsonUtil.toJson(tokensList).toCharArray()
             insertOrUpdate(AUTH_TOKENS, geotabAuthStateChars)
@@ -858,7 +887,8 @@ class AuthUtil(
     }
 
     private fun getCredentialsFromUsername(username: String, tokensList: MutableList<GeotabAuthState>): GeotabAuthState? {
-        return tokensList.firstOrNull { it.username == username }
+        val normalizedUsername = username.lowercase()
+        return tokensList.firstOrNull { it.username == normalizedUsername }
     }
 
     internal fun calculateNextRefreshDelay(): Long {
@@ -1170,9 +1200,13 @@ class AuthUtil(
         val actualUsername = extractUsername(accessToken)
             ?: throw AuthError.ParseFailedError
 
-        if (actualUsername != expected) {
+        // Normalize both usernames for case-insensitive comparison
+        val normalizedExpected = expected.lowercase()
+        val normalizedActual = actualUsername.lowercase()
+
+        if (normalizedActual != normalizedExpected) {
             cleanupAfterValidationFailure(expected, context, authStateToValidate)
-            throw AuthError.UsernameMismatch(expected = expected, actual = actualUsername)
+            throw AuthError.UsernameMismatch(expected = normalizedExpected, actual = normalizedActual)
         }
     }
 

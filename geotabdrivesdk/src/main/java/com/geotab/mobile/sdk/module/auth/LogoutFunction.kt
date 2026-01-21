@@ -36,9 +36,12 @@ class LogoutFunction(
             return
         }
 
+        // Normalize to lowercase
+        val normalizedUsername = trimmedUsername.lowercase()
+
         module.scope.launch {
             try {
-                module.logout(username = trimmedUsername)
+                module.logout(username = normalizedUsername)
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson("Logged out successfully")))
             } catch (e: Exception) {
                 module.handleFunctionException(e, "Logout", jsCallback)
