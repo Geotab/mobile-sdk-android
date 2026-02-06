@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.8.3_75709"
+val versionName = "6.8.3_75765"
 
 plugins {
     id("com.android.library")
@@ -136,6 +136,7 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.activity:activity-ktx:1.8.0")
+    implementation("androidx.browser:browser:1.9.0")
     // This implementation is needed for consumers of the SDK have the option to not include the
     // RedirectUriReceiverActivity in their app if they don't use SSO login.
     api("net.openid:appauth:0.11.1")

@@ -62,7 +62,8 @@ class AuthModule(
         clientId: String,
         discoveryUri: Uri,
         username: String,
-        redirectScheme: Uri
+        redirectScheme: Uri,
+        ephemeralSession: Boolean
     ): AuthToken {
         if (isAuthServiceDisposed) {
             authUtil.authService = AuthorizationService(context)
@@ -74,7 +75,8 @@ class AuthModule(
                 clientId = clientId,
                 discoveryUri = discoveryUri,
                 username = username,
-                redirectScheme = redirectScheme
+                redirectScheme = redirectScheme,
+                ephemeralSession = ephemeralSession
             ).also {
                 isAuthServiceDisposed = true
             }

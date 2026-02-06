@@ -13,6 +13,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.Keep
 import androidx.annotation.VisibleForTesting
+import androidx.browser.customtabs.CustomTabsClient
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.work.WorkManager
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageRepository
@@ -270,7 +272,13 @@ class AuthUtil(
                         .build()
 
                     authService?.let { authService ->
-                        val authIntent = authService.getAuthorizationRequestIntent(authRequest)
+                        val customTabsIntent = createEphemeralCustomTabsIntent(
+                            context = context,
+                            ephemeralSession = ephemeralSession,
+                            username = username,
+                            flowType = Auth.FlowType.LOGIN
+                        )
+                        val authIntent = buildAuthIntent(authService, authRequest, customTabsIntent)
                         withContext(mainDispatcher) {
                             loginActivityResultLauncher.launch(authIntent)
                         }
@@ -346,7 +354,13 @@ class AuthUtil(
                         .build()
 
                     authService?.let { authService ->
-                        val authIntent = authService.getAuthorizationRequestIntent(authRequest)
+                        val customTabsIntent = createEphemeralCustomTabsIntent(
+                            context = context,
+                            ephemeralSession = ephemeralSession,
+                            username = username,
+                            flowType = Auth.FlowType.REAUTH
+                        )
+                        val authIntent = buildAuthIntent(authService, authRequest, customTabsIntent)
                         withContext(mainDispatcher) {
                             loginActivityResultLauncher.launch(authIntent)
                         }
@@ -666,7 +680,8 @@ class AuthUtil(
                     val authService = this.authService ?: throw IllegalStateException("AuthorizationService not initialized")
                     val tokenRequest = response.createTokenExchangeRequest()
                     val tokenResponse = authService.performTokenRequestSuspend(tokenRequest)
-                    handleSuccessfulTokenExchange(context, response, tokenResponse)
+                    val resolvedFlowType = flowType ?: Auth.FlowType.LOGIN
+                    handleSuccessfulTokenExchange(context, response, tokenResponse, resolvedFlowType)
                 } catch (e: Exception) {
                     sendAuthErrorMessage(
                         authError = AuthError.from(e, "Token exchange failed with unexpected error"),
@@ -735,14 +750,13 @@ class AuthUtil(
     private suspend fun handleSuccessfulTokenExchange(
         context: Context,
         authResponse: AuthorizationResponse,
-        tokenResponse: TokenResponse
+        tokenResponse: TokenResponse,
+        flowType: Auth.FlowType
     ) {
         // Create temporary auth state for validation - don't set global authState yet
         val tempAuthState = AuthState(authResponse, tokenResponse, null)
 
         val username = authResponse.request.loginHint
-        val flowType =
-            if (authResponse.request.state == null) Auth.FlowType.LOGIN else Auth.FlowType.REAUTH
 
         if (username == null) {
             sendAuthErrorMessage(
@@ -992,14 +1006,20 @@ class AuthUtil(
     }
 
     private suspend fun launchLogoutUser() {
-        val config = authState?.authorizationServiceConfiguration
-        val redirectUri = authState?.lastAuthorizationResponse?.request?.redirectUri
-        val idToken = authState?.idToken
-
-        if (config == null || redirectUri == null || idToken == null) {
+        val currentAuthState = authState
+        if (currentAuthState == null || !launchEndSession(currentAuthState)) {
             authState = null
             Logger.shared.error("$TAG.launchLogoutUser", "No valid configuration, redirect URI, or ID token found in logout flow")
-            return
+        }
+    }
+
+    private suspend fun launchEndSession(authState: AuthState): Boolean {
+        val config = authState.authorizationServiceConfiguration
+        val redirectUri = authState.lastAuthorizationResponse?.request?.redirectUri
+        val idToken = authState.idToken
+
+        if (config == null || redirectUri == null || idToken == null) {
+            return false
         }
 
         val endSessionRequest = EndSessionRequest.Builder(config)
@@ -1007,11 +1027,15 @@ class AuthUtil(
             .setPostLogoutRedirectUri(redirectUri)
             .build()
 
-        val endSessionIntent = authService?.getEndSessionRequestIntent(endSessionRequest)
+        authService?.let { service ->
+            val endSessionIntent = service.getEndSessionRequestIntent(endSessionRequest)
 
-        withContext(mainDispatcher) {
-            logoutActivityResultLauncher.launch(endSessionIntent)
+            withContext(mainDispatcher) {
+                logoutActivityResultLauncher.launch(endSessionIntent)
+            }
         }
+
+        return true
     }
 
     internal fun handleLogoutResponse(context: Context) {
@@ -1116,6 +1140,89 @@ class AuthUtil(
     }
 
     /**
+     * Builds an authorization intent with optional Custom Tabs support.
+     * If a CustomTabsIntent is provided, it will be used for the authorization request.
+     * Otherwise, a standard authorization intent is created.
+     *
+     * @param authService The authorization service to use
+     * @param authRequest The authorization request configuration
+     * @param customTabsIntent Optional Custom Tabs intent for enhanced browser experience
+     * @return Intent configured for the authorization request
+     */
+    private fun buildAuthIntent(
+        authService: AuthorizationService,
+        authRequest: AuthorizationRequest,
+        customTabsIntent: CustomTabsIntent?
+    ): Intent {
+        return if (customTabsIntent != null) {
+            authService.getAuthorizationRequestIntent(authRequest, customTabsIntent)
+        } else {
+            authService.getAuthorizationRequestIntent(authRequest)
+        }
+    }
+
+    /**
+     * Checks if ephemeral browsing is supported by the default Custom Tabs provider.
+     * Returns true if a browser that supports ephemeral browsing is available.
+     */
+    private fun isEphemeralBrowsingSupported(
+        context: Context,
+        username: String? = null,
+        flowType: Auth.FlowType
+    ): Boolean {
+        return try {
+            val packageName = CustomTabsClient.getPackageName(context, emptyList())
+            packageName != null && CustomTabsClient.isEphemeralBrowsingSupported(context, packageName)
+        } catch (e: Exception) {
+            // Convert to AuthError and log to Sentry (without failing the login flow)
+            val authError = AuthError.from(e, "Failed to check ephemeral browsing support")
+            sendAuthErrorMessage(
+                authError = authError,
+                callback = null, // Don't fail the login flow, just log to Sentry
+                context = context,
+                username = username,
+                flowType = flowType,
+                additionalContext = mapOf(
+                    Auth.ContextKey.REASON to "Ephemeral browsing check failed, falling back to normal browsing",
+                )
+            )
+            false
+        }
+    }
+
+    /**
+     * Determines if ephemeral browsing should be used based on the ephemeralSession flag
+     * and browser support.
+     */
+    private fun shouldUseEphemeralBrowsing(
+        context: Context,
+        ephemeralSession: Boolean,
+        username: String? = null,
+        flowType: Auth.FlowType
+    ): Boolean {
+        return ephemeralSession && isEphemeralBrowsingSupported(context, username, flowType)
+    }
+
+    /**
+     * Creates a CustomTabsIntent with ephemeral browsing enabled if supported.
+     * Returns null if ephemeral browsing is not needed.
+     */
+    private fun createEphemeralCustomTabsIntent(
+        context: Context,
+        ephemeralSession: Boolean,
+        username: String? = null,
+        flowType: Auth.FlowType
+    ): CustomTabsIntent? {
+        return if (shouldUseEphemeralBrowsing(context, ephemeralSession, username, flowType)) {
+            CustomTabsIntent.Builder()
+                .setEphemeralBrowsingEnabled(true)
+                .build()
+        } else {
+            null
+        }
+    }
+
+    /**
      * Checks if the app is currently in the background.
      * Returns true if no activities are visible to the user.
      */
@@ -1162,7 +1269,8 @@ class AuthUtil(
                 expected = username,
                 accessToken = accessToken,
                 context = context,
-                authStateToValidate = authStateToValidate
+                authStateToValidate = authStateToValidate,
+                flowType = flowType
             )
             true
         } catch (e: AuthError) {
@@ -1195,18 +1303,26 @@ class AuthUtil(
         expected: String,
         accessToken: String,
         context: Context,
-        authStateToValidate: AuthState
+        authStateToValidate: AuthState,
+        flowType: Auth.FlowType
     ) = withContext(authScope.coroutineContext) {
         val actualUsername = extractUsername(accessToken)
             ?: throw AuthError.ParseFailedError
 
-        // Normalize both usernames for case-insensitive comparison
         val normalizedExpected = expected.lowercase()
         val normalizedActual = actualUsername.lowercase()
 
         if (normalizedActual != normalizedExpected) {
-            cleanupAfterValidationFailure(expected, context, authStateToValidate)
-            throw AuthError.UsernameMismatch(expected = normalizedExpected, actual = normalizedActual)
+            val mismatchError = AuthError.UsernameMismatch(expected = normalizedExpected, actual = normalizedActual)
+            Logger.shared.authFailure(
+                context = context,
+                username = expected,
+                flowType = flowType,
+                error = mismatchError,
+                additionalContext = mapOf(Auth.ContextKey.STAGE to "username_validation")
+            )
+            cleanupAfterValidationFailure(expected, context, authStateToValidate, flowType)
+            throw mismatchError
         }
     }
 
@@ -1220,7 +1336,8 @@ class AuthUtil(
     private suspend fun cleanupAfterValidationFailure(
         username: String,
         context: Context,
-        failedAuthState: AuthState
+        failedAuthState: AuthState,
+        flowType: Auth.FlowType
     ) {
         try {
             deleteToken(context, username)
@@ -1232,7 +1349,35 @@ class AuthUtil(
             revokeToken(failedAuthState)
         } catch (e: Exception) {
             Logger.shared.error("$TAG.cleanupAfterValidationFailure", "Failed to revoke token: ${e.message}", e)
+            Logger.shared.authFailure(
+                context = context,
+                username = username,
+                flowType = flowType,
+                error = e,
+                additionalContext = mapOf(Auth.ContextKey.STAGE to Auth.LogoutStage.TOKEN_REVOCATION)
+            )
         }
+
+        try {
+            launchEndSessionForMismatch(failedAuthState)
+        } catch (e: Exception) {
+            Logger.shared.warn("$TAG.cleanupAfterValidationFailure", "End session failed: ${e.message}")
+            Logger.shared.authFailure(
+                context = context,
+                username = username,
+                flowType = flowType,
+                error = e,
+                additionalContext = mapOf(Auth.ContextKey.STAGE to Auth.LogoutStage.END_SESSION)
+            )
+        }
+    }
+
+    private suspend fun launchEndSessionForMismatch(failedAuthState: AuthState) {
+        if (!launchEndSession(failedAuthState)) {
+            Logger.shared.warn("$TAG.launchEndSessionForMismatch", "Missing config, redirect URI, or ID token")
+            return
+        }
+        Logger.shared.debug("$TAG.launchEndSessionForMismatch", "End session launched for mismatch cleanup")
     }
 
     /**

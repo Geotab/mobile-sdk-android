@@ -274,16 +274,16 @@ class MyGeotabFragment :
             loginModule?.let { module ->
                 with(module) {
                     initValues(requireActivity())
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.IO) {
-                            authUtil.startTokenRefresh(requireContext())
-                        }
-                    }
                 }
             }
             authModule?.let { module ->
                 with(module) {
                     initValues(requireActivity())
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            authUtil.startTokenRefresh(requireContext())
+                        }
+                    }
                 }
             }
         }

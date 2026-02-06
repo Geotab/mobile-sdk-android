@@ -20,7 +20,8 @@ import java.lang.reflect.Type
 data class LoginArgument(
     val clientId: String,
     val discoveryUri: String,
-    val username: String
+    val username: String,
+    val ephemeralSession: Boolean = false
 )
 
 class LoginFunction(
@@ -95,7 +96,8 @@ class LoginFunction(
                     clientId = arguments.clientId,
                     discoveryUri = discoveryUri,
                     username = normalizedUsername,
-                    redirectScheme = module.context.resources.getString(resourceId).toUri()
+                    redirectScheme = module.context.resources.getString(resourceId).toUri(),
+                    ephemeralSession = arguments.ephemeralSession
                 )
                 jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
             } catch (e: Exception) {
