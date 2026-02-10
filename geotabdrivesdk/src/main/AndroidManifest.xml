@@ -27,6 +27,12 @@
 
     <application>
         <activity
+            android:name="com.geotab.mobile.sdk.module.auth.CustomBrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize" />
+        <activity
             android:name="com.geotab.mobile.sdk.permission.PermissionActivity"
             android:theme="@style/Theme.Transparent"
             android:exported="false"/>

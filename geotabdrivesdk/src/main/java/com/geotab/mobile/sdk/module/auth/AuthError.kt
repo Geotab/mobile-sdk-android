@@ -94,8 +94,16 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      */
     data class UsernameMismatch(
         val expected: String,
-        val actual: String
-    ) : AuthError()
+        val actual: String,
+        val ephemeralSession: Boolean = false
+    ) : AuthError() {
+        val mismatchReason: String
+            get() = if (ephemeralSession) {
+                "Username mismatch in ephemeral session - potential security issue"
+            } else {
+                "Username mismatch in non-ephemeral session - Stale browser cookies from previous user"
+            }
+    }
 
     /**
      * No auth token found for user.

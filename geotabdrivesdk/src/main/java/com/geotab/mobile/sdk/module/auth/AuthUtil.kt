@@ -23,6 +23,7 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.login.TokenRefreshWorker
 import com.geotab.mobile.sdk.util.JsonUtil
+import kotlinx.coroutines.CancellableContinuation
 import java.io.BufferedWriter
 import java.io.IOException
 import java.io.OutputStreamWriter
@@ -81,7 +82,6 @@ class AuthUtil(
     var authService: AuthorizationService? = null
     private var authState: AuthState? = null
     private var currentGeotabAuthState: GeotabAuthState? = null
-    private var currentEphemeralSession: Boolean = false
 
     // TODO: When LoginModule is removed, we can remove this flag as well
     private var isFromLoginModule = false
@@ -93,12 +93,15 @@ class AuthUtil(
     private var pendingAuthMetadata: AuthMetadata? = null
 
     /**
-     * Stores username and flow type for an OAuth request in progress.
-     * Used to provide error context to Sentry when OAuth fails.
+     * Stores username, flow type and ephemeralSession for an OAuth request in progress.
+     * EphemeralSession is added here to fix race condition
+     * Used to provide error context to Sentry when OAuth fails
+     *
      */
     data class AuthMetadata(
         val flowType: Auth.FlowType,
-        val username: String
+        val username: String,
+        val ephemeralSession: Boolean = false
     )
 
     companion object {
@@ -152,7 +155,8 @@ class AuthUtil(
                     context = activityForResult.applicationContext,
                     data = result.data,
                     username = metadata?.username,
-                    flowType = metadata?.flowType
+                    flowType = metadata?.flowType,
+                    ephemeralSession = metadata?.ephemeralSession ?: false
                 )
             }
         }
@@ -238,63 +242,61 @@ class AuthUtil(
         ephemeralSession: Boolean,
         comingFromLoginModule: Boolean
     ): AuthToken {
-        return suspendCancellableCoroutine { continuation ->
-            this.loginCallback = { result ->
-                when (result) {
-                    is Success -> {
-                        val authToken = jsonUtil.fromJson<AuthToken>(result.value)
-                        continuation.resume(authToken)
-                    }
+        // Pre-login cleanup runs synchronously BEFORE async OAuth flow
+        // This ensures it executes while coordinator lock is held, preventing race conditions
+        if (!comingFromLoginModule && !ephemeralSession) {
+            logoutExistingUserBeforeLogin(context, username)
+        }
 
-                    is Failure -> {
-                        continuation.resumeWithException(result.reason)
-                    }
-                }
-            }
+        return suspendCancellableCoroutine { continuation ->
+            this.loginCallback = createLoginCallback(continuation, "performAuthorizationFlow")
 
             authScope.launch {
-                Logger.shared.debug("$TAG.login", "Starting login for user: $username")
+                Logger.shared.debug("$TAG.performLoginInternal", "Starting login for user: $username")
                 isFromLoginModule = comingFromLoginModule
-                currentEphemeralSession = ephemeralSession
-                // Store metadata BEFORE launching
-                pendingAuthMetadata = AuthMetadata(Auth.FlowType.LOGIN, username)
+
+                // Store metadata BEFORE launching (includes ephemeralSession to avoid race conditions)
+                pendingAuthMetadata = AuthMetadata(
+                    flowType = Auth.FlowType.LOGIN,
+                    username = username,
+                    ephemeralSession = ephemeralSession
+                )
                 try {
                     val serviceConfiguration = fetchFromUrlSuspend(discoveryUri)
+                    val authRequest = buildAuthorizationRequest(serviceConfiguration, clientId, redirectScheme, username)
 
-                    val authRequest = AuthorizationRequest.Builder(
-                        serviceConfiguration,
-                        clientId,
-                        ResponseTypeValues.CODE,
-                        redirectScheme
-                    )
-                        .setScope("openid profile email")
-                        .setLoginHint(username)
-                        .build()
-
-                    authService?.let { authService ->
-                        val customTabsIntent = createEphemeralCustomTabsIntent(
+                    try {
+                        authService?.let { authService ->
+                            val customTabsIntent = createEphemeralCustomTabsIntent(
+                                context = context,
+                                ephemeralSession = ephemeralSession,
+                                username = username,
+                                flowType = Auth.FlowType.LOGIN
+                            )
+                            val authIntent = buildAuthIntent(
+                                context = context,
+                                authService = authService,
+                                authRequest = authRequest,
+                                customTabsIntent = customTabsIntent,
+                                ephemeralSession = ephemeralSession
+                            )
+                            withContext(mainDispatcher) {
+                                loginActivityResultLauncher.launch(authIntent)
+                            }
+                        } ?: throw IllegalStateException("AuthorizationService not initialized")
+                    } catch (e: ActivityNotFoundException) {
+                        // Fallback to CustomBrowserActivity if no external browser available
+                        launchCustomBrowserFallback(
                             context = context,
-                            ephemeralSession = ephemeralSession,
+                            serviceConfiguration = serviceConfiguration,
+                            clientId = clientId,
+                            redirectScheme = redirectScheme,
                             username = username,
-                            flowType = Auth.FlowType.LOGIN
+                            ephemeralSession = ephemeralSession,
+                            flowType = Auth.FlowType.LOGIN,
+                            logTag = "$TAG.login"
                         )
-                        val authIntent = buildAuthIntent(authService, authRequest, customTabsIntent)
-                        withContext(mainDispatcher) {
-                            loginActivityResultLauncher.launch(authIntent)
-                        }
-                    } ?: throw IllegalStateException("AuthorizationService not initialized")
-                } catch (e: ActivityNotFoundException) {
-                    pendingAuthMetadata = null
-                    sendAuthErrorMessage(
-                        authError = AuthError.UnexpectedError(
-                            description = "No browser available to handle authentication",
-                            underlyingError = e
-                        ),
-                        callback = this@AuthUtil.loginCallback,
-                        context = context,
-                        username = username,
-                        flowType = Auth.FlowType.LOGIN
-                    )
+                    }
                 } catch (e: Exception) {
                     pendingAuthMetadata = null
                     sendAuthErrorMessage(
@@ -310,6 +312,38 @@ class AuthUtil(
     }
 
     /**
+     * Logs out any existing non-ephemeral user before starting a new non-ephemeral login.
+     * Performs a **full logout with browser interaction** to clear stale cookies.
+     *
+     * **Cleanup rules:**
+     * - Same user (case-insensitive) → No cleanup
+     * - Different user + ephemeral login → No cleanup (can coexist)
+     * - Different user + non-ephemeral login → Logout existing user
+     *
+     * @param context Application context for logout browser
+     * @param username The new user attempting to login
+     * @throws AuthError.UserCancelledFlow if user dismisses logout browser
+     */
+    private suspend fun logoutExistingUserBeforeLogin(context: Context, username: String) {
+        val existingTokens = getAllTokens()
+
+        // Same user login - no cleanup needed
+        if (existingTokens.any { it.username.equals(username, ignoreCase = true) }) {
+            Logger.shared.debug("$TAG.performPreLoginCleanup", "Same user login - storage will be replaced, no cleanup needed")
+            return
+        }
+
+        // Different user - remove existing non-ephemeral user if present
+        val existingNonEphemeralUser = existingTokens.firstOrNull { !it.ephemeralSession } ?: return
+
+        Logger.shared.debug(
+            "$TAG.performPreLoginCleanup",
+            "Pre-login cleanup: removing ${existingNonEphemeralUser.username} (non-ephemeral) before logging in as $username (non-ephemeral)"
+        )
+        performLogoutInternal(context, existingNonEphemeralUser.username)
+    }
+
+    /**
      * Perform authorization flow with a pre-fetched configuration.
      */
     private suspend fun performAuthorizationFlow(
@@ -322,36 +356,20 @@ class AuthUtil(
         comingFromLoginModule: Boolean
     ): AuthToken {
         return suspendCancellableCoroutine { continuation ->
-            this.loginCallback = { result ->
-                when (result) {
-                    is Success -> {
-                        val authToken = jsonUtil.fromJson<AuthToken>(result.value)
-                        continuation.resume(authToken)
-                    }
-
-                    is Failure -> {
-                        continuation.resumeWithException(result.reason)
-                    }
-                }
-            }
+            this.loginCallback = createLoginCallback(continuation, "performAuthorizationFlow")
 
             authScope.launch {
                 Logger.shared.debug("$TAG.performAuthorizationFlow", "Starting authorization flow for user: $username")
                 isFromLoginModule = comingFromLoginModule
-                currentEphemeralSession = ephemeralSession
 
-                // Store metadata BEFORE launching
-                pendingAuthMetadata = AuthMetadata(Auth.FlowType.REAUTH, username)
+                // Store metadata BEFORE launching (includes ephemeralSession to avoid race conditions)
+                pendingAuthMetadata = AuthMetadata(
+                    flowType = Auth.FlowType.REAUTH,
+                    username = username,
+                    ephemeralSession = ephemeralSession
+                )
                 try {
-                    val authRequest = AuthorizationRequest.Builder(
-                        configuration,
-                        clientId,
-                        ResponseTypeValues.CODE,
-                        redirectScheme
-                    )
-                        .setScope("openid profile email")
-                        .setLoginHint(username)
-                        .build()
+                    val authRequest = buildAuthorizationRequest(configuration, clientId, redirectScheme, username)
 
                     authService?.let { authService ->
                         val customTabsIntent = createEphemeralCustomTabsIntent(
@@ -360,22 +378,28 @@ class AuthUtil(
                             username = username,
                             flowType = Auth.FlowType.REAUTH
                         )
-                        val authIntent = buildAuthIntent(authService, authRequest, customTabsIntent)
+                        val authIntent = buildAuthIntent(
+                            context = context,
+                            authService = authService,
+                            authRequest = authRequest,
+                            customTabsIntent = customTabsIntent,
+                            ephemeralSession = ephemeralSession
+                        )
                         withContext(mainDispatcher) {
                             loginActivityResultLauncher.launch(authIntent)
                         }
                     } ?: throw IllegalStateException("AuthorizationService not initialized")
                 } catch (e: ActivityNotFoundException) {
-                    pendingAuthMetadata = null
-                    sendAuthErrorMessage(
-                        authError = AuthError.UnexpectedError(
-                            description = "No browser available to handle re-authentication",
-                            underlyingError = e
-                        ),
-                        callback = this@AuthUtil.loginCallback,
+                    // Fallback to CustomBrowserActivity if no external browser available
+                    launchCustomBrowserFallback(
                         context = context,
+                        serviceConfiguration = configuration,
+                        clientId = clientId,
+                        redirectScheme = redirectScheme,
                         username = username,
-                        flowType = Auth.FlowType.REAUTH
+                        ephemeralSession = ephemeralSession,
+                        flowType = Auth.FlowType.REAUTH,
+                        logTag = "$TAG.performAuthorizationFlow"
                     )
                 } catch (e: Exception) {
                     pendingAuthMetadata = null
@@ -387,6 +411,30 @@ class AuthUtil(
                         flowType = Auth.FlowType.REAUTH
                     )
                 }
+            }
+        }
+    }
+
+    private fun createLoginCallback(
+        continuation: CancellableContinuation<AuthToken>,
+        tag: String
+    ): (Result<Success<String>, Failure>) -> Unit {
+        return { result ->
+            try {
+                when (result) {
+                    is Success -> {
+                        val authToken = jsonUtil.fromJson<AuthToken>(result.value)
+                        continuation.resume(authToken)
+                    }
+                    is Failure -> {
+                        continuation.resumeWithException(result.reason)
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.shared.error("$TAG.$tag", "Exception in callback: ${e.message}", e)
+                continuation.resumeWithException(e)
+            } finally {
+                loginCallback = null
             }
         }
     }
@@ -474,7 +522,38 @@ class AuthUtil(
         username: String
     ) = withContext(authScope.coroutineContext) {
         authCoordinator.performLogout(username) {
-            Logger.shared.debug("$TAG.logout", "Starting logout for user: $username")
+            performLogoutInternal(context, username)
+        }
+    }
+
+    /**
+     * Internal logout implementation that waits for browser completion.
+     * Used by both public logout() and pre-login cleanup.
+     *
+     * @param context Application context
+     * @param username Username to logout
+     * @throws AuthError on logout failure
+     */
+    private suspend fun performLogoutInternal(
+        context: Context,
+        username: String
+    ): Unit = suspendCancellableCoroutine { continuation ->
+        this.logoutCallback = { result ->
+            try {
+                when (result) {
+                    is Success -> continuation.resume(Unit)
+                    is Failure -> continuation.resumeWithException(result.reason)
+                }
+            } catch (e: IllegalStateException) {
+                // Continuation already completed - this can happen if logout was cancelled or timed out
+                Logger.shared.warn("$TAG.performLogoutInternal", "Logout callback invoked but continuation already completed: ${e.message}")
+            } finally {
+                logoutCallback = null
+            }
+        }
+
+        authScope.launch {
+            Logger.shared.debug("$TAG.performLogoutInternal", "Starting logout for user: $username")
 
             try {
                 getAuthState(username)
@@ -492,23 +571,21 @@ class AuthUtil(
                 )
                 sendAuthErrorMessage(
                     authError = authError,
-                    callback = null, // No callback for logout
+                    callback = logoutCallback,
                     context = context,
                     username = username,
                     flowType = Auth.FlowType.LOGOUT
                 )
-                throw authError
             } catch (e: Exception) {
                 // Convert to AuthError and log to Sentry if applicable
                 val authError = if (e is AuthError) e else AuthError.from(e, "Logout failed")
                 sendAuthErrorMessage(
                     authError = authError,
-                    callback = null, // No callback for logout
+                    callback = logoutCallback,
                     context = context,
                     username = username,
                     flowType = Auth.FlowType.LOGOUT
                 )
-                throw authError
             } finally {
                 deleteToken(context, username)
             }
@@ -637,11 +714,20 @@ class AuthUtil(
         context: Context,
         data: Intent?,
         username: String?,
-        flowType: Auth.FlowType?
+        flowType: Auth.FlowType?,
+        ephemeralSession: Boolean = false
     ) {
         // Extract response and exception
         val response = data?.let { AuthorizationResponse.fromIntent(it) }
         val exception = data?.let { AuthorizationException.fromIntent(it) }
+
+        // Check if CustomBrowserActivity passed an AuthError directly
+        val customBrowserAuthError = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            data?.getSerializableExtra(CustomBrowserActivity.EXTRA_AUTH_ERROR, AuthError::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            data?.getSerializableExtra(CustomBrowserActivity.EXTRA_AUTH_ERROR) as? AuthError
+        }
 
         if (data == null) {
             sendAuthErrorMessage(
@@ -655,6 +741,17 @@ class AuthUtil(
         }
 
         when {
+            customBrowserAuthError != null -> {
+                // CustomBrowserActivity passed an AuthError directly - use it as-is
+                // This preserves the exact error type without conversion
+                sendAuthErrorMessage(
+                    authError = customBrowserAuthError,
+                    callback = loginCallback,
+                    context = context,
+                    username = username,
+                    flowType = flowType
+                )
+            }
             exception != null -> {
                 // Convert AuthorizationException to appropriate AuthError type
                 val authError = AuthError.from(exception, "Authorization failed")
@@ -681,7 +778,7 @@ class AuthUtil(
                     val tokenRequest = response.createTokenExchangeRequest()
                     val tokenResponse = authService.performTokenRequestSuspend(tokenRequest)
                     val resolvedFlowType = flowType ?: Auth.FlowType.LOGIN
-                    handleSuccessfulTokenExchange(context, response, tokenResponse, resolvedFlowType)
+                    handleSuccessfulTokenExchange(context, response, tokenResponse, resolvedFlowType, ephemeralSession)
                 } catch (e: Exception) {
                     sendAuthErrorMessage(
                         authError = AuthError.from(e, "Token exchange failed with unexpected error"),
@@ -751,7 +848,8 @@ class AuthUtil(
         context: Context,
         authResponse: AuthorizationResponse,
         tokenResponse: TokenResponse,
-        flowType: Auth.FlowType
+        flowType: Auth.FlowType,
+        ephemeralSession: Boolean
     ) {
         // Create temporary auth state for validation - don't set global authState yet
         val tempAuthState = AuthState(authResponse, tokenResponse, null)
@@ -769,10 +867,12 @@ class AuthUtil(
             return
         }
 
+        Logger.shared.debug("$TAG.handleSuccessfulTokenExchange", "ephemeralSession=$ephemeralSession for user=$username")
+
         // Validate username matches the one in the access token
         // If validation fails, performUsernameValidation will send error via callback and return early
         // Pass tempAuthState so it can be revoked if validation fails, without affecting the global authState
-        if (!performUsernameValidation(username, tokenResponse.accessToken, context, tempAuthState, flowType)) {
+        if (!performUsernameValidation(username, tokenResponse.accessToken, context, tempAuthState, flowType, ephemeralSession)) {
             return // Global authState remains unchanged (previous user or null)
         }
 
@@ -780,6 +880,22 @@ class AuthUtil(
         authState = tempAuthState
         authState?.update(tokenResponse, null)
 
+        val geotabAuthState = GeotabAuthState(
+            authState = authState?.jsonSerializeString() ?: "",
+            username = username.lowercase(),
+            ephemeralSession = ephemeralSession
+        )
+
+        // Persist token BEFORE invoking callback
+        // This ensures storage is updated before user's JavaScript callback fires
+        // preventing race condition where next login's cleanup doesn't see this token
+        if (!isFromLoginModule) {
+            insertToken(geotabAuthState)
+            resetRetryAttempts(username)
+            rescheduleTokenRefreshWorker(context, geotabAuthState.username)
+        }
+
+        // Invoke callback AFTER token is persisted to storage
         loginCallback?.let {
             // TODO: When LoginModule is removed, we can remove this check
             val authToken = if (isFromLoginModule) {
@@ -793,18 +909,6 @@ class AuthUtil(
             }
 
             it(Success(JsonUtil.toJson(authToken)))
-        }
-
-        val geotabAuthState = GeotabAuthState(
-            authState = authState?.jsonSerializeString() ?: "",
-            username = username.lowercase(),
-            ephemeralSession = currentEphemeralSession
-        )
-
-        if (!isFromLoginModule) {
-            insertToken(geotabAuthState)
-            resetRetryAttempts(username)
-            rescheduleTokenRefreshWorker(context, geotabAuthState.username)
         }
     }
 
@@ -1010,6 +1114,14 @@ class AuthUtil(
         if (currentAuthState == null || !launchEndSession(currentAuthState)) {
             authState = null
             Logger.shared.error("$TAG.launchLogoutUser", "No valid configuration, redirect URI, or ID token found in logout flow")
+            // Perform local logout - complete the logout callback since we can't launch browser
+            logoutCallback?.let {
+                val message = "Logged out successfully (local only)"
+                Logger.shared.info("$TAG.launchLogoutUser", message)
+                it(Success(jsonUtil.toJson(message)))
+            }
+        } else {
+            Logger.shared.info("$TAG.launchLogoutUser", "End session browser launched successfully, waiting for browser completion")
         }
     }
 
@@ -1048,8 +1160,11 @@ class AuthUtil(
                 val message = "Logged out successfully"
                 Logger.shared.info("$TAG.handleLogoutResponse", message)
                 it(Success(jsonUtil.toJson(message)))
+            } ?: run {
+                Logger.shared.warn("$TAG.handleLogoutResponse", "No logout callback set for $username")
             }
         } catch (ex: Exception) {
+            Logger.shared.error("$TAG.handleLogoutResponse", "Exception in handleLogoutResponse: ${ex.message}", ex)
             sendAuthErrorMessage(
                 authError = when (ex) {
                     is AuthError -> ex
@@ -1140,20 +1255,135 @@ class AuthUtil(
     }
 
     /**
-     * Builds an authorization intent with optional Custom Tabs support.
-     * If a CustomTabsIntent is provided, it will be used for the authorization request.
-     * Otherwise, a standard authorization intent is created.
+     * Builds an AuthorizationRequest with standard OAuth configuration.
      *
+     * Creates an AppAuth authorization request configured for:
+     * - Authorization code flow (ResponseTypeValues.CODE)
+     * - Standard OpenID Connect scopes (openid, profile, email)
+     * - Login hint with the provided username
+     *
+     * This is a helper function to avoid code duplication across login and reauth flows.
+     *
+     * @param serviceConfiguration The OAuth authorization service configuration
+     * @param clientId OAuth client ID
+     * @param redirectScheme OAuth redirect URI scheme
+     * @param username The username to use as login hint (optional)
+     * @return Configured AuthorizationRequest ready for OAuth flow
+     */
+    private fun buildAuthorizationRequest(
+        serviceConfiguration: AuthorizationServiceConfiguration,
+        clientId: String,
+        redirectScheme: Uri,
+        username: String?
+    ): AuthorizationRequest {
+        return AuthorizationRequest.Builder(
+            serviceConfiguration,
+            clientId,
+            ResponseTypeValues.CODE,
+            redirectScheme
+        )
+            .setScope("openid profile email")
+            .setLoginHint(username)
+            .build()
+    }
+
+    /**
+     * Handles fallback to CustomBrowserActivity when external browser is not available.
+     * Attempts to launch CustomBrowserActivity and handles any errors.
+     *
+     * @param context The application context
+     * @param serviceConfiguration The authorization service configuration
+     * @param clientId OAuth client ID
+     * @param redirectScheme OAuth redirect URI
+     * @param username The username for the auth flow
+     * @param ephemeralSession Whether to use ephemeral browsing (clear cookies)
+     * @param flowType The type of flow (LOGIN or REAUTH)
+     * @param logTag The tag to use for logging
+     */
+    private suspend fun launchCustomBrowserFallback(
+        context: Context,
+        serviceConfiguration: AuthorizationServiceConfiguration,
+        clientId: String,
+        redirectScheme: Uri,
+        username: String?,
+        ephemeralSession: Boolean,
+        flowType: Auth.FlowType,
+        logTag: String
+    ) {
+        Logger.shared.warn(
+            logTag,
+            "No external browser available, falling back to CustomBrowserActivity"
+        )
+
+        try {
+            val fallbackAuthRequest = buildAuthorizationRequest(serviceConfiguration, clientId, redirectScheme, username)
+            val customBrowserIntent = CustomBrowserActivity.createIntent(context, fallbackAuthRequest, ephemeralSession)
+            withContext(mainDispatcher) {
+                loginActivityResultLauncher.launch(customBrowserIntent)
+            }
+        } catch (fallbackError: Exception) {
+            pendingAuthMetadata = null
+            val description = when (flowType) {
+                Auth.FlowType.LOGIN -> "No browser available to handle authentication"
+                Auth.FlowType.REAUTH -> "No browser available to handle re-authentication"
+                else -> "No browser available to handle authentication"
+            }
+            sendAuthErrorMessage(
+                authError = AuthError.UnexpectedError(
+                    description = description,
+                    underlyingError = fallbackError
+                ),
+                callback = this@AuthUtil.loginCallback,
+                context = context,
+                username = username,
+                flowType = flowType
+            )
+        }
+    }
+
+    /**
+     * Determines if the custom browser should be used instead of Chrome Custom Tabs.
+     * Returns true when ephemeral session is requested but CCT doesn't support it.
+     *
+     * @param customTabsIntent The CCT intent (null if ephemeral browsing not supported)
+     * @param ephemeralSession Whether ephemeral session was requested
+     * @return true if CustomBrowserActivity should be used, false otherwise
+     */
+    private fun shouldUseCustomBrowser(
+        customTabsIntent: CustomTabsIntent?,
+        ephemeralSession: Boolean
+    ): Boolean {
+        return customTabsIntent == null && ephemeralSession
+    }
+
+    /**
+     * Builds an authorization intent using Chrome Custom Tabs or custom browser.
+     * Delegates to either CCT or CustomBrowserActivity based on browser capabilities.
+     *
+     * @param context The application context
      * @param authService The authorization service to use
      * @param authRequest The authorization request configuration
-     * @param customTabsIntent Optional Custom Tabs intent for enhanced browser experience
+     * @param customTabsIntent Optional Custom Tabs intent (null if not supported)
+     * @param ephemeralSession Whether an ephemeral session was requested
      * @return Intent configured for the authorization request
      */
     private fun buildAuthIntent(
+        context: Context,
         authService: AuthorizationService,
         authRequest: AuthorizationRequest,
-        customTabsIntent: CustomTabsIntent?
+        customTabsIntent: CustomTabsIntent?,
+        ephemeralSession: Boolean
     ): Intent {
+        // Use custom browser if ephemeral session needed but CCT doesn't support it
+        if (shouldUseCustomBrowser(customTabsIntent, ephemeralSession)) {
+            Logger.shared.info(
+                TAG,
+                "Ephemeral session requested but not supported by CCT, using custom browser fallback"
+            )
+            return CustomBrowserActivity.createIntent(context, authRequest, ephemeralSession = true)
+        }
+
+        // Use CCT with or without ephemeral mode
         return if (customTabsIntent != null) {
             authService.getAuthorizationRequestIntent(authRequest, customTabsIntent)
         } else {
@@ -1172,7 +1402,9 @@ class AuthUtil(
     ): Boolean {
         return try {
             val packageName = CustomTabsClient.getPackageName(context, emptyList())
-            packageName != null && CustomTabsClient.isEphemeralBrowsingSupported(context, packageName)
+            val isSupported = packageName != null && CustomTabsClient.isEphemeralBrowsingSupported(context, packageName)
+            Logger.shared.debug("$TAG.isEphemeralBrowsingSupported", "packageName=$packageName, isSupported=$isSupported for $username")
+            isSupported
         } catch (e: Exception) {
             // Convert to AuthError and log to Sentry (without failing the login flow)
             val authError = AuthError.from(e, "Failed to check ephemeral browsing support")
@@ -1250,6 +1482,7 @@ class AuthUtil(
      * @param context Application context for cleanup operations
      * @param authStateToValidate The AuthState being validated (will be revoked if validation fails)
      * @param flowType The type of auth flow for error logging
+     * @param ephemeralSession Whether this is an ephemeral session (affects logging only)
      * @return true if validation passed or was skipped, false if validation failed
      */
     private suspend fun performUsernameValidation(
@@ -1257,7 +1490,8 @@ class AuthUtil(
         accessToken: String?,
         context: Context,
         authStateToValidate: AuthState,
-        flowType: Auth.FlowType
+        flowType: Auth.FlowType,
+        ephemeralSession: Boolean
     ): Boolean {
         // Skip validation if username is empty or access token is missing
         if (username.isEmpty() || accessToken == null) {
@@ -1270,7 +1504,8 @@ class AuthUtil(
                 accessToken = accessToken,
                 context = context,
                 authStateToValidate = authStateToValidate,
-                flowType = flowType
+                flowType = flowType,
+                ephemeralSession = ephemeralSession
             )
             true
         } catch (e: AuthError) {
@@ -1295,6 +1530,8 @@ class AuthUtil(
      * @param accessToken The JWT access token to validate
      * @param context Application context for cleanup operations
      * @param authStateToValidate The AuthState being validated (will be revoked if validation fails)
+     * @param flowType The type of auth flow for error logging
+     * @param ephemeralSession Whether this is an ephemeral session (affects logging only)
      * @throws AuthError.UsernameMismatch if usernames don't match
      * @throws AuthError.ParseFailedError if JWT parsing fails
      */
@@ -1304,7 +1541,8 @@ class AuthUtil(
         accessToken: String,
         context: Context,
         authStateToValidate: AuthState,
-        flowType: Auth.FlowType
+        flowType: Auth.FlowType,
+        ephemeralSession: Boolean
     ) = withContext(authScope.coroutineContext) {
         val actualUsername = extractUsername(accessToken)
             ?: throw AuthError.ParseFailedError
@@ -1313,14 +1551,22 @@ class AuthUtil(
         val normalizedActual = actualUsername.lowercase()
 
         if (normalizedActual != normalizedExpected) {
-            val mismatchError = AuthError.UsernameMismatch(expected = normalizedExpected, actual = normalizedActual)
+            val mismatchError = AuthError.UsernameMismatch(
+                expected = normalizedExpected,
+                actual = normalizedActual,
+                ephemeralSession = ephemeralSession
+            )
             Logger.shared.authFailure(
                 context = context,
                 username = expected,
                 flowType = flowType,
                 error = mismatchError,
-                additionalContext = mapOf(Auth.ContextKey.STAGE to "username_validation")
+                additionalContext = mapOf(
+                    Auth.ContextKey.STAGE to "username_validation",
+                    Auth.ContextKey.REASON to mismatchError.mismatchReason
+                )
             )
+
             cleanupAfterValidationFailure(expected, context, authStateToValidate, flowType)
             throw mismatchError
         }
