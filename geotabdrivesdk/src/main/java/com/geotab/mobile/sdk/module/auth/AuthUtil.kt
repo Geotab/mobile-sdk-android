@@ -249,7 +249,7 @@ class AuthUtil(
         }
 
         return suspendCancellableCoroutine { continuation ->
-            this.loginCallback = createLoginCallback(continuation, "performAuthorizationFlow")
+            this.loginCallback = createLoginCallback(continuation, "performLoginInternal")
 
             authScope.launch {
                 Logger.shared.debug("$TAG.performLoginInternal", "Starting login for user: $username")

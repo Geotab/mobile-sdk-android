@@ -69,58 +69,36 @@ class AuthModule(
             authUtil.authService = AuthorizationService(context)
         }
 
-        return try {
-            authUtil.login(
+        try {
+            return authUtil.login(
                 context = context,
                 clientId = clientId,
                 discoveryUri = discoveryUri,
                 username = username,
                 redirectScheme = redirectScheme,
                 ephemeralSession = ephemeralSession
-            ).also {
-                isAuthServiceDisposed = true
-            }
-        } catch (e: Exception) {
+            )
+        } finally {
             isAuthServiceDisposed = true
-            handleAuthException(e, "Login")
         }
     }
 
-    suspend fun handleAuthToken(username: String): AuthToken? =
-        try {
-            authUtil.getValidAccessToken(context, username)
-        } catch (e: Exception) {
-            handleAuthException(e, "Get valid access token")
-        }
-
     /**
-     * Handles exceptions from auth operations, wrapping unexpected errors appropriately.
-     * - Re-throws AuthError instances to preserve structured error information
-     * - Re-throws exceptions with JSON-formatted error messages (wrapped AuthErrors)
-     * - Wraps truly unexpected exceptions in UnexpectedError
+     * Retrieves a valid access token for the specified user.
      *
-     * @param e The exception to handle
-     * @param operationName Name of the operation for logging purposes
-     * @throws AuthError or Exception
+     * If the token is expired, this method will attempt to refresh it.
+     * In some scenarios (non-recoverable errors, app in foreground), this may
+     * trigger a browser-based re-authentication flow.
+     *
+     * @param username The username to get the token for
+     * @return AuthToken containing the access token
+     * @throws AuthError.NoAccessTokenFoundError if no token exists for the user
+     * @throws AuthError.TokenRefreshFailed if token refresh fails
+     * @throws AuthError if re-authentication is required but fails
      */
-    private fun handleAuthException(e: Exception, operationName: String): Nothing {
-        when (e) {
-            is AuthError -> throw e
-            else -> {
-                // Check if this is a wrapped structured error (JSON in exception message)
-                val errorMessage = e.message
-                if (AuthUtil.isStructuredAuthError(errorMessage)) {
-                    // This is a structured error wrapped in a generic exception, re-throw it
-                    throw e
-                }
-
-                Logger.shared.error(TAG, "$operationName failed with unexpected error: ${e.message}", e)
-                throw AuthError.UnexpectedError(
-                    description = "$operationName failed with unexpected error",
-                    underlyingError = e
-                )
-            }
-        }
+    suspend fun handleAuthToken(username: String): AuthToken {
+        val authToken = authUtil.getValidAccessToken(context, username)
+        return authToken ?: throw AuthError.NoAccessTokenFoundError(username)
     }
 
     /**

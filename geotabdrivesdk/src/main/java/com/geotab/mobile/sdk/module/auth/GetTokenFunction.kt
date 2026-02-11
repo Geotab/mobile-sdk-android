@@ -43,12 +43,7 @@ class GetTokenFunction(
         module.scope.launch {
             try {
                 val authToken = module.handleAuthToken(normalizedUsername)
-                if (authToken != null) {
-                    jsCallback(Success(JsonUtil.toJson(authToken)))
-                } else {
-                    val error = AuthError.NoAccessTokenFoundError(normalizedUsername)
-                    jsCallback(Failure(error))
-                }
+                jsCallback(Success(JsonUtil.toJson(authToken)))
             } catch (e: Exception) {
                 module.handleFunctionException(e, "Get token", jsCallback)
             }
