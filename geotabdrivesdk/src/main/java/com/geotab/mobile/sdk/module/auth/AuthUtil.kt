@@ -562,8 +562,15 @@ class AuthUtil(
                     throw AuthError.NoAccessTokenFoundError(username)
                 }
 
+                val isEphemeralSession = currentGeotabAuthState?.ephemeralSession ?: false
+
                 revokeToken()
-                launchLogoutUser()
+
+                if (isEphemeralSession) {
+                    completeEphemeralLogout(username)
+                } else {
+                    launchLogoutUser()
+                }
             } catch (e: ActivityNotFoundException) {
                 val authError = AuthError.UnexpectedError(
                     description = "Failed to launch logout browser",
@@ -1107,6 +1114,26 @@ class AuthUtil(
      */
     internal fun resetRetryAttempts(username: String) {
         retryAttempts.remove(username)
+    }
+
+    /**
+     * Completes logout for ephemeral sessions without launching browser.
+     * For ephemeral sessions (Custom Tabs with no state persistence),
+     * endSession is unnecessary since no cookies/state are persisted.
+     *
+     * @param username The user being logged out
+     */
+    private fun completeEphemeralLogout(username: String) {
+        Logger.shared.info(
+            "$TAG.completeEphemeralLogout",
+            "Ephemeral session detected - completing logout locally for user: $username"
+        )
+        authState = null
+        logoutCallback?.let {
+            val message = "Logged out successfully (ephemeral session)"
+            Logger.shared.info("$TAG.completeEphemeralLogout", message)
+            it(Success(jsonUtil.toJson(message)))
+        }
     }
 
     private suspend fun launchLogoutUser() {
