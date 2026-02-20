@@ -59,6 +59,7 @@ data class AuthToken(
     val idToken: String? = null
 )
 
+@Keep
 @Parcelize
 data class GeotabAuthState(
     val authState: String,
