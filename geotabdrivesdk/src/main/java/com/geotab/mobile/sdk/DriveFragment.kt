@@ -257,7 +257,7 @@ class DriveFragment :
         )
     }
     private val authUtil: AuthUtil by lazy {
-        AuthUtil.init(secureStorageRepository)
+        AuthUtil.init(secureStorageRepository, STORAGE_PREFIX)
     }
 
     private var loginModule: LoginModule? = null
@@ -458,6 +458,8 @@ class DriveFragment :
 
     @Keep
     companion object {
+        private const val STORAGE_PREFIX = "geotabDrive_@"
+
         /**
          * Use this factory method to create a new instance of
          * this fragment using the provided parameters.

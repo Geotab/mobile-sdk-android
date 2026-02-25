@@ -70,6 +70,7 @@ data class GeotabAuthState(
 class AuthUtil(
     private val getValueChars: suspend (String) -> CharArray?,
     private val insertOrUpdate: suspend (String, CharArray) -> Unit,
+    private val authTokensKey: String = AUTH_TOKENS_BASE,
     private val jsonUtil: JsonUtil = JsonUtil,
     @get:VisibleForTesting
     internal val authScope: CoroutineScope = CoroutineScope(Executors.newSingleThreadExecutor().asCoroutineDispatcher()),
@@ -107,7 +108,7 @@ class AuthUtil(
 
     companion object {
         private const val TAG = "AuthUtil"
-        private const val AUTH_TOKENS = "authTokens"
+        private const val AUTH_TOKENS_BASE = "authTokens"
         private const val DEFAULT_BASE_RETRY_INTERVAL_MS = 2 * 60 * 1000L // 2 minutes
         private const val DEFAULT_MAX_RETRY_INTERVAL_MS = 15 * 60 * 1000L // 15 minutes
 
@@ -124,11 +125,20 @@ class AuthUtil(
 
         @Volatile
         private var instance: AuthUtil? = null
-        fun init(repository: SecureStorageRepository): AuthUtil {
+
+        /**
+         * Initialize AuthUtil with a storage prefix for the auth tokens key.
+         *
+         * @param repository The SecureStorageRepository instance
+         * @param storagePrefix The app-specific prefix (e.g., "geotabDrive_@" for Drive, "mygeotab_@" for MyGeotab).
+         *                      This prefix ensures the auth tokens key is preserved during JS clear() operations.
+         */
+        fun init(repository: SecureStorageRepository, storagePrefix: String): AuthUtil {
             return instance ?: synchronized(this) {
                 instance ?: AuthUtil(
                     getValueChars = repository::getValueChars,
-                    insertOrUpdate = repository::insertOrUpdate
+                    insertOrUpdate = repository::insertOrUpdate,
+                    authTokensKey = "$storagePrefix$AUTH_TOKENS_BASE"
                 ).also { instance = it }
             }
         }
@@ -988,7 +998,7 @@ class AuthUtil(
         tokensList.add(geotabAuthState)
 
         val geotabAuthStateJson = JsonUtil.toJson(tokensList).toCharArray()
-        insertOrUpdate(AUTH_TOKENS, geotabAuthStateJson)
+        insertOrUpdate(authTokensKey, geotabAuthStateJson)
     }
 
     private suspend fun deleteToken(
@@ -997,11 +1007,10 @@ class AuthUtil(
     ) {
         try {
             val tokensList = getAllTokens()
-
             tokensList.removeIf { it.username == username.lowercase() }
 
             val geotabAuthStateChars = JsonUtil.toJson(tokensList).toCharArray()
-            insertOrUpdate(AUTH_TOKENS, geotabAuthStateChars)
+            insertOrUpdate(authTokensKey, geotabAuthStateChars)
             cancelScheduleNextRefreshToken(context, username)
         } catch (e: Exception) {
             Logger.shared.error(
@@ -1033,7 +1042,7 @@ class AuthUtil(
     }
 
     internal suspend fun getAllTokens(): MutableList<GeotabAuthState> {
-        val allTokensChars = getValueChars(AUTH_TOKENS)
+        val allTokensChars = getValueChars(authTokensKey)
 
         val tokensList = if (allTokensChars?.isNotEmpty() == true) {
             try {

@@ -130,7 +130,7 @@ class MyGeotabFragment :
     }
 
     private val authUtil: AuthUtil by lazy {
-        AuthUtil.init(secureStorageRepository)
+        AuthUtil.init(secureStorageRepository, STORAGE_PREFIX)
     }
     private var loginModule: LoginModule? = null
     private var authModule: AuthModule? = null
@@ -163,6 +163,7 @@ class MyGeotabFragment :
     @Keep
     companion object {
         private const val TAG = "MyGeotabFragment"
+        private const val STORAGE_PREFIX = "mygeotab_@"
 
         /**
          * Use this factory method to create a new instance of
