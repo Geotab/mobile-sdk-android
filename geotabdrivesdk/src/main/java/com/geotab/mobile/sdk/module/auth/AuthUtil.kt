@@ -50,6 +50,7 @@ import net.openid.appauth.ResponseTypeValues
 import net.openid.appauth.TokenRequest
 import net.openid.appauth.TokenResponse
 import java.io.CharArrayReader
+import kotlin.math.pow
 import kotlinx.parcelize.Parcelize
 
 @Keep
@@ -1099,7 +1100,8 @@ class AuthUtil(
      * @return Delay in milliseconds before the next retry
      */
     internal fun calculateBackoffDelay(attempt: Int): Long {
-        val exponentialDelay = DEFAULT_BASE_RETRY_INTERVAL_MS * Math.pow(2.0, attempt.toDouble()).toLong()
+        val backoffMultiplier = 2.0
+        val exponentialDelay = DEFAULT_BASE_RETRY_INTERVAL_MS * backoffMultiplier.pow(attempt.toDouble()).toLong()
         return minOf(exponentialDelay, DEFAULT_MAX_RETRY_INTERVAL_MS)
     }
 
