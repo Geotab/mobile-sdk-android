@@ -28,6 +28,8 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
+import com.geotab.mobile.sdk.module.app.AppModule
+import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.browser.BrowserModule
@@ -113,6 +115,10 @@ class MyGeotabFragment :
         SSOModule(this.parentFragmentManager, appPreferences)
     }
 
+    private val appModule: AppModule by lazy {
+        AppModule(evaluate = evaluate, push = push, moveAppToBackground = ::moveAppToBackground)
+    }
+
     private val cookieManager: CookieManager by lazy {
         CookieManager.getInstance()
     }
@@ -153,7 +159,8 @@ class MyGeotabFragment :
             deviceModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
             webViewModule,
-            ssoModule
+            ssoModule,
+            appModule
         )
     }
 
@@ -296,6 +303,7 @@ class MyGeotabFragment :
         bigQueryLogListener?.let { listener ->
             (Logger.shared as? com.geotab.mobile.sdk.logging.LogBroadcaster)?.addListener(listener)
         }
+        appModule.initValues(requireContext())
     }
 
     override fun findModule(module: String): Module? {
@@ -493,6 +501,14 @@ class MyGeotabFragment :
      */
     fun setOnDomainChangeCallback(callback: ((String) -> Unit)?) {
         contentController.setOnDomainChangeCallback(callback)
+    }
+
+    override fun setLastServerAddressUpdatedCallback(callback: LastServerUpdatedCallbackType) {
+        appModule.lastServerUpdatedCallback = callback
+    }
+
+    override fun clearLastServerAddressUpdatedCallback() {
+        appModule.lastServerUpdatedCallback = {}
     }
 
     private fun moveAppToBackground() {
