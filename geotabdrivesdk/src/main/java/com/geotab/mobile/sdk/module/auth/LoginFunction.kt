@@ -13,15 +13,13 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.login.LoginModule.Companion.LOGIN_SCHEME_ARGUMENT_ERROR_MESSAGE
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 
 @Keep
 data class LoginArgument(
     val clientId: String,
     val discoveryUri: String,
-    val username: String,
-    val ephemeralSession: Boolean = false
+    val username: String
 )
 
 class LoginFunction(
@@ -38,23 +36,12 @@ class LoginFunction(
         @Suppress("SENSELESS_COMPARISON")
         if (
             arguments.clientId.isNullOrBlank() ||
-            arguments.discoveryUri.isNullOrBlank()
+            arguments.discoveryUri.isNullOrBlank() ||
+            arguments.username.isNullOrBlank()
         ) {
             jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
             return
         }
-
-        // Trim username (returns empty string if null) and validate it's not empty
-        @Suppress("UNNECESSARY_SAFE_CALL")
-        val trimmedUsername = arguments.username?.trim() ?: ""
-
-        if (trimmedUsername.isEmpty()) {
-            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, AuthModule.USERNAME_REQUIRED_ERROR_MESSAGE)))
-            return
-        }
-
-        // Normalize to lowercase
-        val normalizedUsername = trimmedUsername.lowercase()
 
         val discoveryUri = arguments.discoveryUri.toUri().normalizeScheme()
 
@@ -90,20 +77,13 @@ class LoginFunction(
             return
         }
 
-        module.scope.launch {
-            try {
-                val authToken = module.login(
-                    clientId = arguments.clientId,
-                    discoveryUri = discoveryUri,
-                    username = normalizedUsername,
-                    redirectScheme = module.context.resources.getString(resourceId).toUri(),
-                    ephemeralSession = arguments.ephemeralSession
-                )
-                jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
-            } catch (e: Exception) {
-                module.handleFunctionException(e, "Login", jsCallback)
-            }
-        }
+        module.login(
+            arguments.clientId,
+            discoveryUri,
+            arguments.username,
+            module.context.resources.getString(resourceId).toUri(),
+            jsCallback
+        )
     }
 
     override fun getType(): Type {

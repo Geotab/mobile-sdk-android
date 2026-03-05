@@ -32,12 +32,14 @@ data class SentryConfig(
     val packageInfo: PackageInfo,
     val debug: Boolean = false,
     val captureLevel: SentryLevel = SentryLevel.INFO, // Minimum level to capture as events
-    val sendDebugLogs: Boolean = false // Whether to send DEBUG logs as breadcrumbs
+    val sendDebugLogs: Boolean = false // Whether to send DEBUG logs as breadcrumbs (matches iOS debugging flag)
 )
 
 /**
  * Listener that integrates with Sentry for crash reporting and error tracking.
  * Listens to log broadcasts and sends them to Sentry based on configured level.
+ *
+ * Similar to iOS's SentryLogger which wraps the DefaultLogger and adds Sentry integration.
  */
 
 @Suppress("UnstableApiUsage")
@@ -71,19 +73,14 @@ class SentryLogListener(
     override fun onLogEvent(event: LogEvent) {
         val sentryLevel = event.level.toSentryLevel()
 
+        // Add breadcrumbs - skip DEBUG logs unless sendDebugLogs is enabled (matches iOS behavior)
+        if (sentryLevel != SentryLevel.DEBUG || sendDebugLogs) {
+            addBreadcrumb(sentryLevel, event.tag, event.message)
+        }
+
         // Send to Sentry if level is high enough
         if (sentryLevel.ordinal >= captureLevel.ordinal) {
-            if (event.isSentryEvent) {
-                // Explicit Sentry event - always creates event
-                sendSentryEvent(sentryLevel, event.tag, event.message, event.exception, event.tags, event.context)
-            } else {
-                // Simple log - only add breadcrumbs (unless it's DEBUG OR sendDebugLogs is false)
-                if (sentryLevel != SentryLevel.DEBUG || sendDebugLogs) {
-                    addBreadcrumb(sentryLevel, event.tag, event.message)
-                }
-
-                sendSentryLog(sentryLevel, event.tag, event.message, event.exception)
-            }
+            sendToSentry(sentryLevel, event.tag, event.message, event.exception)
         }
     }
 
@@ -97,18 +94,14 @@ class SentryLogListener(
         )
     }
 
-    /**
-     * Sends a log to Sentry. Logs without exceptions are sent to the Logs tab,
-     * while logs with exceptions are sent as events to the Issues tab.
-     */
-    private fun sendSentryLog(level: SentryLevel, tag: String, message: String, exception: Throwable? = null) {
+    private fun sendToSentry(level: SentryLevel, tag: String, message: String, exception: Throwable? = null) {
         val formattedMessage = "[$tag] $message"
 
         if (exception == null) {
-            // No exception: send to Sentry Explore > Logs
+            // No exception: send to Sentry Explore > Logs (matches iOS log() method)
             when (level) {
                 SentryLevel.DEBUG -> {
-                    // Only send DEBUG logs if debugging is enabled
+                    // Only send DEBUG logs if debugging is enabled (matches iOS)
                     if (sendDebugLogs) {
                         Sentry.logger().debug(formattedMessage)
                     }
@@ -119,51 +112,11 @@ class SentryLogListener(
                 SentryLevel.FATAL -> Sentry.logger().fatal(formattedMessage)
             }
         } else {
-            // Has exception: send as Event to Issues tab
+            // Has exception: send as Event to Issues tab (matches iOS event() method)
             val event = SentryEvent(exception)
             event.level = level
             event.message = Message().apply { formatted = formattedMessage }
             Sentry.captureEvent(event)
-        }
-    }
-
-    /**
-     * Creates and send Sentry event object (sent to Issues tab, generates alerts).
-     * Always creates an event regardless of whether exception is present.
-     */
-    private fun sendSentryEvent(
-        level: SentryLevel,
-        tag: String,
-        message: String,
-        exception: Throwable?,
-        tags: Map<String, String>?,
-        context: Map<String, Any>?
-    ) {
-        val formattedMessage = "[$tag] $message"
-
-        // Always create a Sentry event
-        val event = if (exception != null) {
-            SentryEvent(exception)
-        } else {
-            SentryEvent()
-        }
-
-        event.level = level
-        event.message = Message().apply { formatted = formattedMessage }
-
-        Sentry.captureEvent(event) { scope ->
-            // Set the level on scope
-            scope.level = level
-
-            // Add tags to scope
-            tags?.forEach { (key, value) ->
-                scope.setTag(key, value)
-            }
-
-            // Add context/extras to scope
-            context?.forEach { (key, value) ->
-                scope.setExtra(key, value.toString())
-            }
         }
     }
 

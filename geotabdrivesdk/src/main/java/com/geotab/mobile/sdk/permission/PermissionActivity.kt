@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.geotab.mobile.sdk.permission.PermissionHelper.Companion.PERMISSIONS_ASKED
@@ -39,7 +38,6 @@ class PermissionActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val permissionList = intent.parcelableArrayListExtra<Permission>(PERMISSION_EXTRA) ?: emptyList()
 

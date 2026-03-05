@@ -28,8 +28,6 @@ import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
-import com.geotab.mobile.sdk.module.app.AppModule
-import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.browser.BrowserModule
@@ -115,10 +113,6 @@ class MyGeotabFragment :
         SSOModule(this.parentFragmentManager, appPreferences)
     }
 
-    private val appModule: AppModule by lazy {
-        AppModule(evaluate = evaluate, push = push, moveAppToBackground = ::moveAppToBackground)
-    }
-
     private val cookieManager: CookieManager by lazy {
         CookieManager.getInstance()
     }
@@ -136,7 +130,7 @@ class MyGeotabFragment :
     }
 
     private val authUtil: AuthUtil by lazy {
-        AuthUtil.init(secureStorageRepository, STORAGE_PREFIX)
+        AuthUtil.init(secureStorageRepository)
     }
     private var loginModule: LoginModule? = null
     private var authModule: AuthModule? = null
@@ -159,8 +153,7 @@ class MyGeotabFragment :
             deviceModule,
             context?.let { BrowserModule(this.parentFragmentManager, it) },
             webViewModule,
-            ssoModule,
-            appModule
+            ssoModule
         )
     }
 
@@ -170,7 +163,6 @@ class MyGeotabFragment :
     @Keep
     companion object {
         private const val TAG = "MyGeotabFragment"
-        private const val STORAGE_PREFIX = "mygeotab_@"
 
         /**
          * Use this factory method to create a new instance of
@@ -282,16 +274,16 @@ class MyGeotabFragment :
             loginModule?.let { module ->
                 with(module) {
                     initValues(requireActivity())
-                }
-            }
-            authModule?.let { module ->
-                with(module) {
-                    initValues(requireActivity())
                     lifecycleScope.launch {
                         withContext(Dispatchers.IO) {
                             authUtil.startTokenRefresh(requireContext())
                         }
                     }
+                }
+            }
+            authModule?.let { module ->
+                with(module) {
+                    initValues(requireActivity())
                 }
             }
         }
@@ -303,7 +295,6 @@ class MyGeotabFragment :
         bigQueryLogListener?.let { listener ->
             (Logger.shared as? com.geotab.mobile.sdk.logging.LogBroadcaster)?.addListener(listener)
         }
-        appModule.initValues(requireContext())
     }
 
     override fun findModule(module: String): Module? {
@@ -377,8 +368,19 @@ class MyGeotabFragment :
                 is Failure -> {
                     this.webView.post {
                         executeIfValid {
-                            val jsScript = buildErrorJavaScript(callback, result.reason)
-                            this.webView.evaluateJavascript(jsScript, null)
+                            this.webView.evaluateJavascript(
+                                """
+                                try {
+                                    var t = $callback(new Error(`${result.reason.getErrorCode()}: ${result.reason.getErrorMessage()}`));
+                                    if (t instanceof Promise) {
+                                        t.catch(err => { console.log(">>>>> Unexpected exception: ", err); });
+                                    }
+                                } catch(err) {
+                                    console.log(">>>>> Unexpected exception: ", err);
+                                }
+                                """.trimIndent(),
+                                null
+                            )
                         }
                     }
                 }
@@ -492,23 +494,6 @@ class MyGeotabFragment :
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    /**
-     * Set a callback to be invoked when the WebView navigates to a different domain.
-     * This is useful for detecting server changes that occur in the WebView login page.
-     * @param callback Function that receives the new domain (hostname) as a String parameter
-     */
-    fun setOnDomainChangeCallback(callback: ((String) -> Unit)?) {
-        contentController.setOnDomainChangeCallback(callback)
-    }
-
-    override fun setLastServerAddressUpdatedCallback(callback: LastServerUpdatedCallbackType) {
-        appModule.lastServerUpdatedCallback = callback
-    }
-
-    override fun clearLastServerAddressUpdatedCallback() {
-        appModule.lastServerUpdatedCallback = {}
     }
 
     private fun moveAppToBackground() {

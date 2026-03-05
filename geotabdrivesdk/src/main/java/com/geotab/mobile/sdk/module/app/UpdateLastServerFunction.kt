@@ -11,15 +11,14 @@ class UpdateLastServerFunction(
     override val module: AppModule
 ) : ModuleFunction {
 
-    /*** Gives a regular expression pattern for domain validation with optional path
+    /*** Gives a regular expersion pattern for domain validation
      *  Domain name should be A-Z|a-z|0-9|-
      *  Domain name should be between 1 to 63 character long
      *  Top level should be between 2 to 6 character long
-     *  Domain name should not start or end with hyphen
+     *  Domain name should not start or end with hypen
      *  Domain can be a subdomain
-     *  Optional path can follow the domain (e.g., /path/to/resource)
      */
-    private fun getPattern() = """^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}(/.*)?$"""
+    private fun getPattern() = """^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$"""
 
     /**
      * Handle incoming JavaScript calls from Geotab Drive's web component
