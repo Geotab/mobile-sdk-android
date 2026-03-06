@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.http.SslError
 import android.os.Build
+import android.util.Log
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceError
@@ -15,6 +16,7 @@ import androidx.annotation.RequiresApi
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.interfaces.WebViewClientController
 import com.geotab.mobile.sdk.module.NetworkErrorDelegate
+import kotlin.invoke
 
 class WebViewClientUserContentController(private val networkErrorDelegate: NetworkErrorDelegate) :
     WebViewClientController, WebViewClient() {
@@ -25,6 +27,27 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
     private var moduleScripts = ""
     private var appOnBackPressedCallback: OnBackPressedCallback? = null
     private var webViewOnBackPressedCallback: OnBackPressedCallback? = null
+    private var previousDomain: String? = null
+    private var onDomainChangeCallback: ((String) -> Unit)? = null
+
+    private fun checkAndNotifyDomainChange(url: String) {
+        val currentDomain = try {
+            java.net.URI(url).host
+        } catch (e: Exception) {
+            Logger.shared.error(
+                TAG,
+                "Failed to parse domain from url: $url",
+                e
+            )
+            null
+        }
+
+        if (currentDomain != null && currentDomain != previousDomain) {
+            Log.d(TAG, "Domain changed from '$previousDomain' to '$currentDomain'")
+            previousDomain = currentDomain
+            onDomainChangeCallback?.invoke(currentDomain)
+        }
+    }
 
     override fun onReceivedError(
         view: WebView?,
@@ -68,15 +91,20 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
     }
 
     override fun onPageFinished(view: WebView?, url: String?) {
-        view?.let { webView ->
-            webView.evaluateJavascript(moduleScripts, null)
-            webViewOnBackPressedCallback?.isEnabled = webView.canGoBack()
-            appOnBackPressedCallback?.isEnabled = !webView.canGoBack()
+        url?.let { currentUrl ->
+            checkAndNotifyDomainChange(currentUrl)
+            view?.let { webView ->
+                webView.evaluateJavascript(moduleScripts, null)
+                webViewOnBackPressedCallback?.isEnabled = webView.canGoBack()
+                appOnBackPressedCallback?.isEnabled = !webView.canGoBack()
+            }
         }
     }
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-        val urlScheme = request?.url?.scheme ?: ""
+        val url = request?.url
+        val urlScheme = url?.scheme ?: ""
+
         if (urlScheme.matches(Regex("(tel|mailto|sms|geo)")) && view?.context != null) {
             try {
                 val intent = Intent(Intent.ACTION_VIEW)
@@ -90,6 +118,11 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
                 )
             }
         }
+
+        // For normal main-frame http/https navigations, detect domain earlier
+        if (request?.isForMainFrame == true && (urlScheme == "https")) {
+            url?.toString()?.let { checkAndNotifyDomainChange(it) }
+        }
         return false
     }
 
@@ -99,5 +132,13 @@ class WebViewClientUserContentController(private val networkErrorDelegate: Netwo
 
     fun setAppCallBack(onBackPressedCallBack: OnBackPressedCallback?) {
         appOnBackPressedCallback = onBackPressedCallBack
+    }
+
+    /**
+     * Set a callback to be invoked when the WebView navigates to a different domain
+     * @param callback Function that receives the new domain (hostname) as a String parameter
+     */
+    fun setOnDomainChangeCallback(callback: ((String) -> Unit)?) {
+        onDomainChangeCallback = callback
     }
 }

@@ -13,6 +13,7 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.login.LoginModule.Companion.LOGIN_SCHEME_ARGUMENT_ERROR_MESSAGE
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import java.lang.reflect.Type
 
 @Keep
@@ -36,12 +37,23 @@ class StartFunction(
         @Suppress("SENSELESS_COMPARISON")
         if (
             arguments.clientId.isNullOrBlank() ||
-            arguments.discoveryUri.isNullOrBlank() ||
-            arguments.loginHint.isNullOrBlank()
+            arguments.discoveryUri.isNullOrBlank()
         ) {
             jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR)))
             return
         }
+
+        // Trim loginHint (returns empty string if null) and validate it's not empty
+        @Suppress("UNNECESSARY_SAFE_CALL")
+        val trimmedLoginHint = arguments.loginHint?.trim() ?: ""
+
+        if (trimmedLoginHint.isEmpty()) {
+            jsCallback(Failure(Error(GeotabDriveError.MODULE_FUNCTION_ARGUMENT_ERROR, "LoginHint is required")))
+            return
+        }
+
+        // Normalize to lowercase
+        val normalizedLoginHint = trimmedLoginHint.lowercase()
 
         val discoveryUri = arguments.discoveryUri.toUri().normalizeScheme()
 
@@ -77,13 +89,20 @@ class StartFunction(
             return
         }
 
-        module.login(
-            arguments.clientId,
-            discoveryUri,
-            arguments.loginHint,
-            module.context.resources.getString(resourceId).toUri(),
-            jsCallback
-        )
+        module.scope.launch {
+            try {
+                val authToken = module.login(
+                    clientId = arguments.clientId,
+                    discoveryUri = discoveryUri,
+                    loginHint = normalizedLoginHint,
+                    redirectScheme = module.context.resources.getString(resourceId).toUri()
+                )
+                jsCallback(Success(com.geotab.mobile.sdk.util.JsonUtil.toJson(authToken)))
+            } catch (e: Exception) {
+                val errorMessage = if (e is com.geotab.mobile.sdk.module.auth.AuthError) e.errorDescription else e.message ?: "Login failed"
+                jsCallback(Failure(Error(GeotabDriveError.AUTH_FAILED_ERROR, errorMessage)))
+            }
+        }
     }
 
     override fun getType(): Type {

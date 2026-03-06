@@ -3,7 +3,7 @@ package com.geotab.mobile.sdk.logging
 import androidx.annotation.Keep
 
 /**
- * Log level enum matching iOS implementation
+ * Log level enum
  */
 @Keep
 enum class BroadcastLogLevel {
@@ -21,11 +21,14 @@ data class LogEvent(
     val level: BroadcastLogLevel,
     val tag: String,
     val message: String,
-    val exception: Throwable? = null
+    val exception: Throwable? = null,
+    val tags: Map<String, String>? = null,
+    val context: Map<String, Any>? = null,
+    val isSentryEvent: Boolean = false
 )
 
 /**
- * Interface for log listeners (similar to iOS NotificationCenter pattern)
+ * Interface for log listeners
  */
 @Keep
 interface LogListener {
@@ -34,8 +37,6 @@ interface LogListener {
 
 /**
  * Broadcaster that distributes logs to multiple listeners.
- * Similar to iOS's NotificationCenter pattern where DefaultLogger posts to NotificationCenter
- * and multiple listeners (AppLogEventSource, SentryLogger) receive the events.
  */
 @Keep
 class LogBroadcaster : Logging {
@@ -93,5 +94,32 @@ class LogBroadcaster : Logging {
 
     override fun error(tag: String, message: String, exception: Throwable) {
         broadcast(LogEvent(BroadcastLogLevel.ERROR, tag, message, exception))
+    }
+
+    /**
+     * Creates Sentry logs/breadcrumbs.
+     * Use for informational logging that doesn't require alerts.
+     */
+    override fun log(
+        level: BroadcastLogLevel,
+        tag: String,
+        message: String
+    ) {
+        broadcast(LogEvent(level, tag, message, isSentryEvent = false))
+    }
+
+    /**
+     * Creates Sentry events.
+     * Use for errors/warnings that require investigation.
+     */
+    override fun event(
+        level: BroadcastLogLevel,
+        tag: String,
+        message: String,
+        exception: Throwable?,
+        tags: Map<String, String>,
+        context: Map<String, Any>
+    ) {
+        broadcast(LogEvent(level, tag, message, exception, tags, context, isSentryEvent = true))
     }
 }

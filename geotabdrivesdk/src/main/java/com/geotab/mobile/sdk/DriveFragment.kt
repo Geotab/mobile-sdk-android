@@ -257,7 +257,7 @@ class DriveFragment :
         )
     }
     private val authUtil: AuthUtil by lazy {
-        AuthUtil.init(secureStorageRepository)
+        AuthUtil.init(secureStorageRepository, STORAGE_PREFIX)
     }
 
     private var loginModule: LoginModule? = null
@@ -384,16 +384,16 @@ class DriveFragment :
             loginModule?.let { module ->
                 with(module) {
                     initValues(requireActivity())
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.IO) {
-                            authUtil.startTokenRefresh(requireContext())
-                        }
-                    }
                 }
             }
             authModule?.let { module ->
                 with(module) {
                     initValues(requireActivity())
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) {
+                            authUtil.startTokenRefresh(requireContext())
+                        }
+                    }
                 }
             }
         }
@@ -458,6 +458,8 @@ class DriveFragment :
 
     @Keep
     companion object {
+        private const val STORAGE_PREFIX = "geotabDrive_@"
+
         /**
          * Use this factory method to create a new instance of
          * this fragment using the provided parameters.
@@ -632,20 +634,6 @@ class DriveFragment :
         """.trimIndent()
     }
 
-    private fun buildErrorJavaScript(callback: String, reason: Error): String {
-        val errorMessage = "${reason.getErrorCode()}: ${reason.getErrorMessage()}"
-        return """
-        try {
-            var t = $callback(new Error(`$errorMessage`));
-            if (t instanceof Promise) {
-                t.catch(err => { console.log(">>>>> Unexpected exception in Promise: ", err); });
-            }
-        } catch(err) {
-            console.log(">>>>> Unexpected exception in callback: ", err);
-        }
-        """.trimIndent()
-    }
-
     private fun callModuleFunction(
         moduleFunction: ModuleFunction,
         callback: String,
@@ -801,6 +789,15 @@ class DriveFragment :
      */
     override fun setLastServerAddressUpdatedCallback(callback: LastServerUpdatedCallbackType) {
         appModule.lastServerUpdatedCallback = callback
+    }
+
+    /**
+     * Set a callback to be invoked when the WebView navigates to a different domain.
+     * This is useful for detecting server changes that occur in the WebView login page.
+     * @param callback Function that receives the new domain (hostname) as a String parameter
+     */
+    fun setOnDomainChangeCallback(callback: ((String) -> Unit)?) {
+        contentController.setOnDomainChangeCallback(callback)
     }
 
     /**

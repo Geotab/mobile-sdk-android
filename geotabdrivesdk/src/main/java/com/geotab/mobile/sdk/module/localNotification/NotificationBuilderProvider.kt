@@ -5,8 +5,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.view.ContextThemeWrapper
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.geotab.mobile.sdk.NotificationActivity
+import com.geotab.mobile.sdk.R
 import com.geotab.mobile.sdk.models.NativeNotifyAction
 import java.security.SecureRandom
 
@@ -25,6 +28,67 @@ class NotificationBuilderProvider(val context: Context) {
             setOngoing(false)
             setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             setSmallIcon(getSmallIcon())
+            setColor(getNotificationColor())
+        }
+    }
+
+    /**
+     * Get notification icon background color from app's theme.
+     * Creates a themed context wrapper using the app's theme resource, then resolves
+     * colorPrimaryDark from that themed context.
+     * Falls back to whitelabel_background_color if resolution fails.
+     * @return Int color value
+     */
+    private fun getNotificationColor(): Int {
+        return try {
+            resolveColorPrimaryDarkFromTheme() ?: getFallbackColor()
+        } catch (_: Exception) {
+            getFallbackColor()
+        }
+    }
+
+    /**
+     * Attempts to resolve colorPrimaryDark from the app's theme.
+     * @return Resolved color value, or null if resolution fails
+     */
+    private fun resolveColorPrimaryDarkFromTheme(): Int? {
+        val appThemeResId = getAppThemeResourceId()
+        if (appThemeResId == 0) return null
+
+        val themedContext = ContextThemeWrapper(context, appThemeResId)
+        val typedValue = android.util.TypedValue()
+
+        val resolved = themedContext.theme.resolveAttribute(
+            androidx.appcompat.R.attr.colorPrimaryDark,
+            typedValue,
+            true
+        )
+
+        return if (resolved && typedValue.resourceId != 0) {
+            ContextCompat.getColor(context, typedValue.resourceId)
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Returns the fallback notification color when theme resolution fails.
+     * @return Default whitelabel background color
+     */
+    private fun getFallbackColor(): Int {
+        return ContextCompat.getColor(context, R.color.whitelabel_background_color)
+    }
+
+    /**
+     * Get the app's theme resource ID by looking up the "AppTheme" style resource
+     * @return Int theme resource ID, or 0 if not found
+     */
+    @Suppress("DiscouragedApi")
+    private fun getAppThemeResourceId(): Int {
+        return try {
+            context.resources.getIdentifier("AppTheme", "style", context.packageName)
+        } catch (e: Exception) {
+            0
         }
     }
 
