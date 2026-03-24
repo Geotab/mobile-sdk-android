@@ -52,6 +52,7 @@ $dokka.location:com.geotab.mobile.sdk.publicInterfaces/DriveSdk/setSpeechEngine/
 $dokka.location:com.geotab.mobile.sdk.publicInterfaces/DriveSdk/webAppLoadFailed/#/PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-drive-sdk/web-app-load-failed.html
 $dokka.location:com.geotab.mobile.sdk.publicInterfaces/MyGeotabSdk///PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-my-geotab-sdk/index.html
 $dokka.location:com.geotab.mobile.sdk.publicInterfaces/MyGeotabSdk/clearLastServerAddressUpdatedCallback/#/PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-my-geotab-sdk/clear-last-server-address-updated-callback.html
+$dokka.location:com.geotab.mobile.sdk.publicInterfaces/MyGeotabSdk/setCustomURLPath/#kotlin.String/PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-my-geotab-sdk/set-custom-u-r-l-path.html
 $dokka.location:com.geotab.mobile.sdk.publicInterfaces/MyGeotabSdk/setLastServerAddressUpdatedCallback/#kotlin.Function1[kotlin.String,kotlin.Unit]/PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-my-geotab-sdk/set-last-server-address-updated-callback.html
 $dokka.location:com.geotab.mobile.sdk.publicInterfaces/MyGeotabSdk/webAppLoadFailed/#/PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-my-geotab-sdk/web-app-load-failed.html
 $dokka.location:com.geotab.mobile.sdk.publicInterfaces/SpeechEngine///PointingToDeclaration/output/com.geotab.mobile.sdk.publicInterfaces/-speech-engine/index.html

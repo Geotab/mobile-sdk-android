@@ -30,6 +30,7 @@ import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
 import com.geotab.mobile.sdk.module.app.AppModule
 import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
+import com.geotab.mobile.sdk.util.setLocationHash
 import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.browser.BrowserModule
@@ -509,6 +510,16 @@ class MyGeotabFragment :
 
     override fun clearLastServerAddressUpdatedCallback() {
         appModule.lastServerUpdatedCallback = {}
+    }
+
+    override fun setCustomURLPath(path: String) {
+        path.trim().ifEmpty { return }
+        val webView = getWebView()
+        if (webView != null) {
+            webView.setLocationHash(path)
+        } else {
+            Logger.shared.warn(TAG, "setCustomURLPath called but WebView not ready, navigation failed: $path")
+        }
     }
 
     private fun moveAppToBackground() {

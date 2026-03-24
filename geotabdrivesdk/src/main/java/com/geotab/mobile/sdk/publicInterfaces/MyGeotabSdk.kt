@@ -18,4 +18,10 @@ interface MyGeotabSdk {
      * Clears the previously set "last server address" callback
      */
     fun clearLastServerAddressUpdatedCallback()
+
+    /**
+     * Navigate to a path within the MyGeotab web application by setting the URL hash.
+     * If the WebView is not yet ready, the call is ignored.
+     */
+    fun setCustomURLPath(path: String)
 }

@@ -85,6 +85,7 @@ import com.geotab.mobile.sdk.publicInterfaces.SpeechEngine
 import com.geotab.mobile.sdk.util.PushScriptUtil
 import com.geotab.mobile.sdk.util.UserAgentUtil
 import com.geotab.mobile.sdk.util.serializable
+import com.geotab.mobile.sdk.util.setLocationHash
 import com.github.mustachejava.DefaultMustacheFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -813,12 +814,7 @@ class DriveFragment :
         }
 
         if (isWebViewConfigured) {
-            this.webView?.evaluateJavascript(
-                """
-                    window.location.hash="$path";
-                """.trimIndent(),
-                null
-            )
+            this.webView?.setLocationHash(path)
             this.customUrl = null
         } else {
             this.customUrl = "https://${DriveSdkConfig.serverAddress}/drive/default.html#$path"
