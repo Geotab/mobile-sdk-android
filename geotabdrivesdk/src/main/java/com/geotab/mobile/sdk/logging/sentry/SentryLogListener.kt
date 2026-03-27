@@ -2,7 +2,9 @@ package com.geotab.mobile.sdk.logging.sentry
 
 import android.content.Context
 import android.content.pm.PackageInfo
+import android.util.Log
 import androidx.annotation.Keep
+import androidx.annotation.VisibleForTesting
 import com.geotab.mobile.sdk.logging.BroadcastLogLevel
 import com.geotab.mobile.sdk.logging.LogEvent
 import com.geotab.mobile.sdk.logging.LogListener
@@ -13,6 +15,10 @@ import io.sentry.SentryLevel
 import io.sentry.SentryOptions
 import io.sentry.android.core.SentryAndroid
 import io.sentry.protocol.Message
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 /**
  * Sentry environment types
@@ -38,33 +44,79 @@ data class SentryConfig(
 /**
  * Listener that integrates with Sentry for crash reporting and error tracking.
  * Listens to log broadcasts and sends them to Sentry based on configured level.
+ *
+ * Use [create] factory function to instantiate, not the constructor directly.
+ * The factory function ensures Sentry initialization happens on a background thread to prevent ANR.
  */
 
 @Suppress("UnstableApiUsage")
 @Keep
-class SentryLogListener(
-    config: SentryConfig,
-    context: Context
+class SentryLogListener private constructor(
+    private val captureLevel: SentryLevel,
+    private val sendDebugLogs: Boolean
 ) : LogListener {
 
-    private val captureLevel: SentryLevel = config.captureLevel
-    private val sendDebugLogs: Boolean = config.sendDebugLogs
+    companion object {
+        private const val TAG = "SentryLogListener"
 
-    init {
-        if (!Sentry.isEnabled()) {
-            SentryAndroid.init(context) { options: SentryOptions ->
-                options.dsn = config.dsn
-                options.isDebug = config.debug
-                options.environment = config.environment.value
-                options.release = buildReleaseName(config.packageInfo)
-                options.tracesSampleRate = if (config.environment == SentryEnvironment.ALPHA ||
-                    config.environment == SentryEnvironment.DEVELOPMENT
-                ) 1.0 else 0.0
-                options.isSendDefaultPii = true
-                options.isEnableAutoSessionTracking = true
-                options.isAttachStacktrace = true
-                options.logs.isEnabled = true
+        @VisibleForTesting
+        var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+        /**
+         * Creates a SentryLogListener instance with Sentry initialization on background thread.
+         * This prevents ANR when SentryAndroid.init() blocks on HandlerThread.getLooper().
+         *
+         * @param config Sentry configuration including DSN, environment, and package info
+         * @param context Application context
+         * @param dispatcher Coroutine dispatcher for background work (defaults to ioDispatcher, injectable for testing)
+         * @return Initialized SentryLogListener instance
+         * @throws kotlinx.coroutines.TimeoutCancellationException if initialization takes longer than 30 seconds
+         */
+        suspend fun create(
+            config: SentryConfig,
+            context: Context,
+            dispatcher: CoroutineDispatcher = ioDispatcher
+        ): SentryLogListener = withTimeout(30_000L) {
+            withContext(dispatcher) {
+                // SentryAndroid.init() internally calls HandlerThread.getLooper() which blocks
+                // Move to background thread to prevent ANR on main thread
+                if (!Sentry.isEnabled()) {
+                    Log.d(TAG, "Initializing Sentry on background thread (${Thread.currentThread().name})...")
+                    val startTime = System.currentTimeMillis()
+
+                    SentryAndroid.init(context) { options: SentryOptions ->
+                        options.dsn = config.dsn
+                        options.isDebug = config.debug
+                        options.environment = config.environment.value
+                        options.release = buildReleaseName(config.packageInfo)
+                        options.tracesSampleRate = if (config.environment == SentryEnvironment.ALPHA ||
+                            config.environment == SentryEnvironment.DEVELOPMENT
+                        ) 1.0 else 0.0
+                        options.isSendDefaultPii = true
+                        options.isEnableAutoSessionTracking = true
+                        options.isAttachStacktrace = true
+                        options.logs.isEnabled = true
+                    }
+
+                    val duration = System.currentTimeMillis() - startTime
+                    Log.d(TAG, "SentryAndroid.init() completed in ${duration}ms on thread ${Thread.currentThread().name}")
+                } else {
+                    Log.d(TAG, "Sentry already initialized, skipping init")
+                }
+
+                // Return the constructed instance
+                SentryLogListener(
+                    captureLevel = config.captureLevel,
+                    sendDebugLogs = config.sendDebugLogs
+                )
             }
+        }
+
+        private fun buildReleaseName(packageInfo: PackageInfo): String {
+            val version = packageInfo.versionName ?: "unknown_version"
+            val build = packageInfo.versionCode.toString()
+            val packageName = packageInfo.packageName ?: "unknown_package"
+            return "$packageName ${version}_$build"
         }
     }
 
@@ -165,13 +217,6 @@ class SentryLogListener(
                 scope.setExtra(key, value.toString())
             }
         }
-    }
-
-    private fun buildReleaseName(packageInfo: PackageInfo): String {
-        val version = packageInfo.versionName ?: "unknown_version"
-        val build = packageInfo.versionCode.toString()
-        val packageName = packageInfo.packageName ?: "unknown_package"
-        return "$packageName ${version}_$build"
     }
 }
 
