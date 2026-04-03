@@ -577,6 +577,11 @@ declare namespace geotabModules {
              * Details about the underlying error cause.
              */
             underlyingError?: string;
+
+            /**
+             * Whether the UI should redirect to the login screen when this error occurs
+             */
+            shouldRedirectToLogin: boolean;
         }
 
         /*******
@@ -685,13 +690,16 @@ declare namespace geotabModules {
           *   if (err) {
           *     if (err.code) {
           *       // Structured AuthError
-          *       if (err.code === 'TOKEN_REFRESH_REAUTH_REQUIRED') {
-          *         // Trigger re-login flow
-          *         redirectToLogin();
-          *       } else if (err.recoverable) {
+          *       if (err.recoverable) {
           *         // Network error, will auto-retry in background
           *         showOfflineMode();
+          *       } else if (err.code === 'USER_CANCELLED') {
+          *         // User cancelled re-auth, don't show error
+          *       } else if (err.shouldRedirectToLogin) {
+          *         // Redirect to login screen
+          *         redirectToLogin();
           *       } else {
+          *         // Show error message without redirecting
           *         showError(err.message);
           *       }
           *     } else {

@@ -230,7 +230,7 @@ class CustomBrowserActivity : ComponentActivity() {
      */
     private fun handleCancel() {
         // Use the exact same message from AuthError.UserCancelledFlow
-        Logger.shared.debug("$TAG.handleCancel", AuthError.UserCancelledFlow.fallbackErrorMessage)
+        Logger.shared.debug("$TAG.handleCancel", AuthError.UserCancelledFlow().fallbackErrorMessage)
         setResult(RESULT_CANCELED)
         finish()
     }

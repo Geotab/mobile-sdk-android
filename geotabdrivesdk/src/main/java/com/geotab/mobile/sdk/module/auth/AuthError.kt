@@ -18,75 +18,64 @@ import javax.net.ssl.SSLException
  * - [fallbackErrorMessage]: Human-readable error message (fallback if JSON serialization fails)
  * - [errorCode]: Programmatic error code for web developers (e.g., "TOKEN_REFRESH_FAILED")
  * - [isRecoverable]: Whether this error is recoverable (can retry)
+ * - [shouldRedirectToLogin]: Whether user should redirect to login
  */
 sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
     /**
      * Failed parsing session.
      */
-    object SessionParseFailedError : AuthError() {
-        private fun readResolve(): Any = SessionParseFailedError
-    }
+    data class SessionParseFailedError(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * Failed retrieving session.
      */
-    object SessionRetrieveFailedError : AuthError() {
-        private fun readResolve(): Any = SessionRetrieveFailedError
-    }
+    data class SessionRetrieveFailedError(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * Failed parsing Json or auth state.
      */
-    object ParseFailedError : AuthError() {
-        private fun readResolve(): Any = ParseFailedError
-    }
+    data class ParseFailedError(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * No data returned from authorization flow.
      */
-    object NoDataFoundError : AuthError() {
-        private fun readResolve(): Any = NoDataFoundError
-    }
+    data class NoDataFoundError(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * Insecure Discovery URI. HTTPS is required.
      */
-    object InvalidURL : AuthError() {
-        private fun readResolve(): Any = InvalidURL
-    }
+    data class InvalidURL(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * Missing required authentication data.
      */
-    object MissingAuthData : AuthError() {
-        private fun readResolve(): Any = MissingAuthData
-    }
+    data class MissingAuthData(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * No external user agent available.
      */
-    object NoExternalUserAgent : AuthError() {
-        private fun readResolve(): Any = NoExternalUserAgent
-    }
+    data class NoExternalUserAgent(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * User cancelled the authentication flow.
      */
-    object UserCancelledFlow : AuthError() {
-        private fun readResolve(): Any = UserCancelledFlow
-    }
+    data class UserCancelledFlow(override var shouldRedirectToLogin: Boolean = false) : AuthError()
 
     /**
      * Login redirect scheme key not found in AndroidManifest.xml.
      */
-    data class InvalidRedirectScheme(val schemeKey: String) : AuthError()
+    data class InvalidRedirectScheme(
+        val schemeKey: String,
+        override var shouldRedirectToLogin: Boolean = false
+    ) : AuthError()
 
     /**
      * Failed to save auth state for user.
      */
     data class FailedToSaveAuthState(
         val username: String,
-        val underlyingError: Throwable
+        val underlyingError: Throwable,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError()
 
     /**
@@ -95,7 +84,8 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
     data class UsernameMismatch(
         val expected: String,
         val actual: String,
-        val ephemeralSession: Boolean = false
+        val ephemeralSession: Boolean = false,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError() {
         val mismatchReason: String
             get() = if (ephemeralSession) {
@@ -108,7 +98,10 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
     /**
      * No auth token found for user.
      */
-    data class NoAccessTokenFoundError(val username: String) : AuthError()
+    data class NoAccessTokenFoundError(
+        val username: String,
+        override var shouldRedirectToLogin: Boolean = false
+    ) : AuthError()
 
     /**
      * Token refresh failed for user.
@@ -116,27 +109,38 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      * @param username The username for which token refresh failed
      * @param underlyingError The underlying error that caused the token refresh to fail
      * @param requiresReauthentication Whether the error requires user re-authentication
+     * @param shouldRedirectToLogin Whether the UI should redirect to login screen
      */
     data class TokenRefreshFailed(
         val username: String,
         val underlyingError: Throwable,
-        val requiresReauthentication: Boolean
+        val requiresReauthentication: Boolean,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError()
 
     /**
      * Token revocation failed.
      */
-    data class RevokeTokenFailed(val underlyingError: Throwable) : AuthError()
+    data class RevokeTokenFailed(
+        val underlyingError: Throwable,
+        override var shouldRedirectToLogin: Boolean = false
+    ) : AuthError()
 
     /**
      * Network error occurred during authentication.
      */
-    data class NetworkError(val underlyingError: Throwable) : AuthError()
+    data class NetworkError(
+        val underlyingError: Throwable,
+        override var shouldRedirectToLogin: Boolean = false
+    ) : AuthError()
 
     /**
      * Unexpected response from server.
      */
-    data class UnexpectedResponse(val statusCode: Int) : AuthError()
+    data class UnexpectedResponse(
+        val statusCode: Int,
+        override var shouldRedirectToLogin: Boolean = false
+    ) : AuthError()
 
     /**
      * Unexpected error occurred.
@@ -144,10 +148,12 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      *
      * @param description Human-readable description of what operation failed
      * @param underlyingError The underlying exception that caused the error
+     * @param shouldRedirectToLogin Whether the UI should redirect to login screen
      */
     data class UnexpectedError(
         val description: String,
-        val underlyingError: Throwable?
+        val underlyingError: Throwable?,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError()
 
     /**
@@ -156,10 +162,12 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      *
      * @param code The OAuth error code from GeneralErrors
      * @param underlyingError The underlying AuthorizationException
+     * @param shouldRedirectToLogin Whether the UI should redirect to login screen
      */
     data class OAuthGeneralError(
         val code: Int,
-        val underlyingError: Throwable
+        val underlyingError: Throwable,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError()
 
     /**
@@ -168,10 +176,12 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      *
      * @param code The OAuth authorization error code
      * @param description Error description from the OAuth provider
+     * @param shouldRedirectToLogin Whether the UI should redirect to login screen
      */
     data class OAuthAuthorizationError(
         val code: Int,
-        val description: String
+        val description: String,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError()
 
     /**
@@ -180,11 +190,18 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      *
      * @param code The OAuth token error code
      * @param description Error description from the OAuth provider
+     * @param shouldRedirectToLogin Whether the UI should redirect to login screen
      */
     data class OAuthTokenError(
         val code: Int,
-        val description: String
+        val description: String,
+        override var shouldRedirectToLogin: Boolean = false
     ) : AuthError()
+
+    /**
+     * Returns the true or false for redirect user ot login screen.
+     */
+    open var shouldRedirectToLogin: Boolean = false
 
     /**
      * Returns the error code for programmatic error handling.
@@ -525,44 +542,45 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
          *
          * @param error The error to convert
          * @param description Optional description for unexpected errors. Defaults to "Unhandled error"
-         * @return A specific AuthError case
+         * @param shouldRedirectToLogin Whether the UI should redirect to login screen.
          */
-        fun from(error: Throwable, description: String = "Unhandled error"): AuthError {
-            // If already AuthError, return as-is
+        fun from(error: Throwable, description: String = "Unhandled error", shouldRedirectToLogin: Boolean? = null): AuthError {
             if (error is AuthError) {
                 return error
             }
+
+            val redirectValue = shouldRedirectToLogin ?: false
 
             // Check if this is an AuthorizationException (from AppAuth library)
             if (error is AuthorizationException) {
                 if (error.type == AuthorizationException.TYPE_GENERAL_ERROR) {
                     return when (error.code) {
-                        AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code -> UserCancelledFlow
-                        AuthorizationException.GeneralErrors.NETWORK_ERROR.code -> NetworkError(error)
-                        else -> OAuthGeneralError(code = error.code, underlyingError = error)
+                        AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code -> UserCancelledFlow(redirectValue)
+                        AuthorizationException.GeneralErrors.NETWORK_ERROR.code -> NetworkError(error, redirectValue)
+                        else -> OAuthGeneralError(code = error.code, underlyingError = error, shouldRedirectToLogin = redirectValue)
                     }
                 }
 
                 return when (error.type) {
                     AuthorizationException.TYPE_OAUTH_AUTHORIZATION_ERROR -> {
                         val errorDescription = error.error ?: error.localizedMessage ?: "Unknown authorization error"
-                        OAuthAuthorizationError(code = error.code, description = errorDescription)
+                        OAuthAuthorizationError(code = error.code, description = errorDescription, shouldRedirectToLogin = redirectValue)
                     }
                     AuthorizationException.TYPE_OAUTH_TOKEN_ERROR -> {
                         val errorDescription = error.error ?: error.localizedMessage ?: "Unknown token error"
-                        OAuthTokenError(code = error.code, description = errorDescription)
+                        OAuthTokenError(code = error.code, description = errorDescription, shouldRedirectToLogin = redirectValue)
                     }
-                    else -> UnexpectedError(description = description, underlyingError = error)
+                    else -> UnexpectedError(description = description, underlyingError = error, shouldRedirectToLogin = redirectValue)
                 }
             }
 
             // Check for network errors
             if (error is UnknownHostException || error is SocketTimeoutException || error is IOException) {
-                return NetworkError(error)
+                return NetworkError(error, redirectValue)
             }
 
             // Fallback to generic unexpected error with provided description
-            return UnexpectedError(description = description, underlyingError = error)
+            return UnexpectedError(description = description, underlyingError = error, shouldRedirectToLogin = redirectValue)
         }
     }
 }

@@ -98,7 +98,7 @@ class AuthModule(
      */
     suspend fun handleAuthToken(username: String): AuthToken {
         val authToken = authUtil.getValidAccessToken(context, username)
-        return authToken ?: throw AuthError.NoAccessTokenFoundError(username)
+        return authToken ?: throw AuthError.NoAccessTokenFoundError(username, shouldRedirectToLogin = true)
     }
 
     /**

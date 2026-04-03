@@ -191,7 +191,7 @@ class AuthUtil(
                     val username = authState?.lastAuthorizationResponse?.request?.loginHint
 
                     sendAuthErrorMessage(
-                        authError = AuthError.UserCancelledFlow,
+                        authError = AuthError.UserCancelledFlow(),
                         callback = logoutCallback,
                         context = context,
                         username = username,
@@ -416,7 +416,7 @@ class AuthUtil(
                 } catch (e: Exception) {
                     pendingAuthMetadata = null
                     sendAuthErrorMessage(
-                        authError = AuthError.from(e, "Re-authentication failed with unexpected error"),
+                        authError = AuthError.from(e, "Re-authentication failed with unexpected error", shouldRedirectToLogin = true),
                         callback = this@AuthUtil.loginCallback,
                         context = context,
                         username = username,
@@ -484,12 +484,12 @@ class AuthUtil(
             try {
                 // Load existing auth state to get configuration and client info
                 getAuthState(username)
-                val state = authState ?: throw AuthError.NoAccessTokenFoundError(username)
-                val geotabState = currentGeotabAuthState ?: throw AuthError.NoAccessTokenFoundError(username)
+                val state = authState ?: throw AuthError.NoAccessTokenFoundError(username, shouldRedirectToLogin = true)
+                val geotabState = currentGeotabAuthState ?: throw AuthError.NoAccessTokenFoundError(username, shouldRedirectToLogin = true)
 
                 // Extract OAuth configuration from stored auth state
                 val authRequest = state.lastAuthorizationResponse?.request
-                    ?: throw AuthError.SessionRetrieveFailedError
+                    ?: throw AuthError.SessionRetrieveFailedError(shouldRedirectToLogin = true)
 
                 val configuration = authRequest.configuration
                 val clientId = authRequest.clientId
@@ -516,8 +516,11 @@ class AuthUtil(
                     } catch (deleteError: Exception) {
                         Logger.shared.error("$TAG.reauth", "Failed to cleanup after user cancellation: ${deleteError.message}", deleteError)
                     }
+                    // Rethrow with shouldRedirectToLogin: true for reauth context
+                    throw AuthError.UserCancelledFlow(shouldRedirectToLogin = true)
                 }
-                throw e
+                // All other reauth errors should also have shouldRedirectToLogin: true
+                throw AuthError.from(e, "Re-authentication failed", shouldRedirectToLogin = true)
             }
         }
     }
@@ -571,7 +574,7 @@ class AuthUtil(
                 getAuthState(username)
 
                 if (authState == null) {
-                    throw AuthError.NoAccessTokenFoundError(username)
+                    throw AuthError.NoAccessTokenFoundError(username, shouldRedirectToLogin = true)
                 }
 
                 val isEphemeralSession = currentGeotabAuthState?.ephemeralSession ?: false
@@ -748,18 +751,16 @@ class AuthUtil(
             data?.getSerializableExtra(CustomBrowserActivity.EXTRA_AUTH_ERROR) as? AuthError
         }
 
-        if (data == null) {
-            sendAuthErrorMessage(
-                authError = AuthError.UserCancelledFlow,
-                callback = loginCallback,
-                context = context,
-                username = username,
-                flowType = flowType
-            )
-            return
-        }
-
         when {
+            data == null -> {
+                sendAuthErrorMessage(
+                    authError = AuthError.UserCancelledFlow(shouldRedirectToLogin = true),
+                    callback = loginCallback,
+                    context = context,
+                    username = username,
+                    flowType = flowType
+                )
+            }
             customBrowserAuthError != null -> {
                 // CustomBrowserActivity passed an AuthError directly - use it as-is
                 // This preserves the exact error type without conversion
@@ -772,8 +773,7 @@ class AuthUtil(
                 )
             }
             exception != null -> {
-                // Convert AuthorizationException to appropriate AuthError type
-                val authError = AuthError.from(exception, "Authorization failed")
+                val authError = AuthError.from(exception, "Authorization failed", shouldRedirectToLogin = true)
                 sendAuthErrorMessage(
                     authError = authError,
                     callback = loginCallback,
@@ -784,7 +784,7 @@ class AuthUtil(
             }
             response == null -> {
                 sendAuthErrorMessage(
-                    authError = AuthError.NoDataFoundError,
+                    authError = AuthError.NoDataFoundError(shouldRedirectToLogin = true),
                     callback = loginCallback,
                     context = context,
                     username = username,
@@ -800,7 +800,7 @@ class AuthUtil(
                     handleSuccessfulTokenExchange(context, response, tokenResponse, resolvedFlowType, ephemeralSession)
                 } catch (e: Exception) {
                     sendAuthErrorMessage(
-                        authError = AuthError.from(e, "Token exchange failed with unexpected error"),
+                        authError = AuthError.from(e, "Token exchange failed with unexpected error", shouldRedirectToLogin = true),
                         callback = loginCallback,
                         context = context,
                         username = username,
@@ -877,7 +877,7 @@ class AuthUtil(
 
         if (username == null) {
             sendAuthErrorMessage(
-                authError = AuthError.MissingAuthData,
+                authError = AuthError.MissingAuthData(shouldRedirectToLogin = true),
                 callback = loginCallback,
                 context = context,
                 username = null,
@@ -1584,7 +1584,7 @@ class AuthUtil(
         ephemeralSession: Boolean
     ) = withContext(authScope.coroutineContext) {
         val actualUsername = extractUsername(accessToken)
-            ?: throw AuthError.ParseFailedError
+            ?: throw AuthError.ParseFailedError()
 
         val normalizedExpected = expected.lowercase()
         val normalizedActual = actualUsername.lowercase()

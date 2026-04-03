@@ -13,6 +13,7 @@ import com.google.gson.annotations.SerializedName
  * @property requiresReauthentication Whether this error requires user re-authentication (optional, only for token refresh)
  * @property username Username associated with the error (optional)
  * @property underlyingError Details about the underlying error cause (optional)
+ * @property shouldRedirectToLogin Whether the UI should redirect to the login screen when this error occurs
  */
 @Keep
 data class AuthErrorResponse(
@@ -32,7 +33,10 @@ data class AuthErrorResponse(
     val username: String? = null,
 
     @SerializedName("underlyingError")
-    val underlyingError: String? = null
+    val underlyingError: String? = null,
+
+    @SerializedName("shouldRedirectToLogin")
+    val shouldRedirectToLogin: Boolean = false
 ) {
     companion object {
         /**
@@ -49,7 +53,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = authError.requiresReauthentication,
                     username = authError.username,
-                    underlyingError = authError.underlyingError.localizedMessage
+                    underlyingError = authError.underlyingError.localizedMessage,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.FailedToSaveAuthState -> AuthErrorResponse(
@@ -58,7 +63,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = authError.username,
-                    underlyingError = authError.underlyingError.localizedMessage
+                    underlyingError = authError.underlyingError.localizedMessage,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.UsernameMismatch -> AuthErrorResponse(
@@ -67,7 +73,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = authError.expected,
-                    underlyingError = "Actual username: ${authError.actual}"
+                    underlyingError = "Actual username: ${authError.actual}",
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.NoAccessTokenFoundError -> AuthErrorResponse(
@@ -76,7 +83,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = authError.username,
-                    underlyingError = null
+                    underlyingError = null,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.InvalidRedirectScheme -> AuthErrorResponse(
@@ -85,7 +93,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = null,
-                    underlyingError = "Missing key: ${authError.schemeKey}"
+                    underlyingError = "Missing key: ${authError.schemeKey}",
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.NetworkError -> AuthErrorResponse(
@@ -94,7 +103,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = null,
-                    underlyingError = authError.underlyingError.localizedMessage
+                    underlyingError = authError.underlyingError.localizedMessage,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.UnexpectedResponse -> AuthErrorResponse(
@@ -103,7 +113,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = null,
-                    underlyingError = "HTTP ${authError.statusCode}"
+                    underlyingError = "HTTP ${authError.statusCode}",
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.RevokeTokenFailed -> AuthErrorResponse(
@@ -112,7 +123,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = null,
-                    underlyingError = authError.underlyingError.localizedMessage
+                    underlyingError = authError.underlyingError.localizedMessage,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 is AuthError.UnexpectedError -> AuthErrorResponse(
@@ -121,7 +133,8 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = null,
-                    underlyingError = authError.underlyingError?.localizedMessage
+                    underlyingError = authError.underlyingError?.localizedMessage,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
                 // All other error types don't have associated data
@@ -131,7 +144,9 @@ data class AuthErrorResponse(
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
                     username = null,
-                    underlyingError = null
+                    underlyingError = null,
+                    shouldRedirectToLogin = authError.shouldRedirectToLogin
+
                 )
             }
         }
