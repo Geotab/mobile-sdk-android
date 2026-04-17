@@ -478,10 +478,10 @@ class AuthUtil(
         context: Context,
         username: String
     ): AuthToken = withContext(authScope.coroutineContext) {
-        return@withContext authCoordinator.performReauth(username) {
-            Logger.shared.debug("$TAG.reauth", "Starting re-authentication for user: $username")
+        try {
+            authCoordinator.performReauth(username) {
+                Logger.shared.debug("$TAG.reauth", "Starting re-authentication for user: $username")
 
-            try {
                 // Load existing auth state to get configuration and client info
                 getAuthState(username)
                 val state = authState ?: throw AuthError.NoAccessTokenFoundError(username, shouldRedirectToLogin = true)
@@ -506,22 +506,22 @@ class AuthUtil(
                     ephemeralSession = ephemeralSession,
                     comingFromLoginModule = false
                 )
-            } catch (e: Exception) {
-                // Check if user cancelled the reauth flow
-                if (e is AuthError.UserCancelledFlow) {
-                    // Clear all saved tokens and cancel background refresh for this user
-                    Logger.shared.info("$TAG.reauth", "User cancelled reauth, clearing tokens and canceling refresh worker for $username")
-                    try {
-                        deleteToken(context, username)
-                    } catch (deleteError: Exception) {
-                        Logger.shared.error("$TAG.reauth", "Failed to cleanup after user cancellation: ${deleteError.message}", deleteError)
-                    }
-                    // Rethrow with shouldRedirectToLogin: true for reauth context
-                    throw AuthError.UserCancelledFlow(shouldRedirectToLogin = true)
-                }
-                // All other reauth errors should also have shouldRedirectToLogin: true
-                throw AuthError.from(e, "Re-authentication failed", shouldRedirectToLogin = true)
             }
+        } catch (e: Exception) {
+            // Placed outside the closure so cleanup runs even when reauth
+            // joins an in-flight login via the unified inFlightAuth map.
+            if (e is AuthError.UserCancelledFlow) {
+                // Clear all saved tokens and cancel background refresh for this user
+                Logger.shared.info("$TAG.reauth", "User cancelled reauth, clearing tokens and canceling refresh worker for $username")
+                try {
+                    deleteToken(context, username)
+                } catch (deleteError: Exception) {
+                    Logger.shared.error("$TAG.reauth", "Failed to cleanup after user cancellation: ${deleteError.message}", deleteError)
+                }
+                throw AuthError.UserCancelledFlow(shouldRedirectToLogin = true)
+            }
+            // All other reauth errors should also have shouldRedirectToLogin: true
+            throw AuthError.from(e, "Re-authentication failed", shouldRedirectToLogin = true)
         }
     }
 

@@ -24,8 +24,10 @@ class AuthorizationCoordinator(
     private val mutex = Mutex()
 
     // Track in-flight operations per username
-    private val inFlightLogins = mutableMapOf<String, CompletableDeferred<AuthToken>>()
-    private val inFlightReauths = mutableMapOf<String, CompletableDeferred<AuthToken>>()
+    // Unified map for login + reauth: both produce AuthToken for the same user,
+    // so a reauth call joins an in-flight login (and vice versa) rather than
+    // showing a second sign-in popup.
+    private val inFlightAuth = mutableMapOf<String, CompletableDeferred<AuthToken>>()
     private val inFlightTokenRefresh = mutableMapOf<String, CompletableDeferred<AuthToken?>>()
     private val inFlightLogouts = mutableMapOf<String, CompletableDeferred<Unit>>()
 
@@ -46,7 +48,7 @@ class AuthorizationCoordinator(
     suspend fun performLogin(
         username: String,
         operation: suspend () -> AuthToken
-    ): AuthToken = executeUIOperation(inFlightLogins, username, "Login", operation)
+    ): AuthToken = executeUIOperation(inFlightAuth, username, "Login", operation)
 
     /**
      * Perform re-authentication operation, deduplicating concurrent requests for the same user.
@@ -54,7 +56,7 @@ class AuthorizationCoordinator(
     suspend fun performReauth(
         username: String,
         operation: suspend () -> AuthToken
-    ): AuthToken = executeUIOperation(inFlightReauths, username, "Re-authentication", operation)
+    ): AuthToken = executeUIOperation(inFlightAuth, username, "Re-authentication", operation)
 
     /**
      * Perform token refresh operation, deduplicating concurrent requests.
@@ -140,13 +142,35 @@ class AuthorizationCoordinator(
 
         waitForUIOperation()
 
-        Logger.shared.debug(TAG, "Starting new $operationName for $key")
-
+        // Double-check after waitForUIOperation() — another caller may have registered
+        // while we were suspended. Check and register atomically in one mutex.withLock
+        // to prevent the TOCTOU race where both callers see null and both launch a UI op.
         val deferred = CompletableDeferred<T>()
-        mutex.withLock {
-            operationMap[key] = deferred
-            currentUIOperation = deferred
+        val recheckExisting: CompletableDeferred<T>? = mutex.withLock {
+            val inFlight = operationMap[key]
+            if (inFlight == null) {
+                operationMap[key] = deferred
+                currentUIOperation = deferred
+            }
+            inFlight
         }
+
+        if (recheckExisting != null) {
+            Logger.shared.debug(TAG, "$operationName registered during UI wait for $key, sharing result")
+            try {
+                return withTimeout(timeoutMs) { recheckExisting.await() }
+            } catch (e: TimeoutCancellationException) {
+                Logger.shared.warn(TAG, "Timed out waiting for re-checked $operationName for $key, cleaning up stale operation")
+                cleanupStaleOperation(recheckExisting, operationMap, key)
+                // Fall through to run our own operation
+                mutex.withLock {
+                    operationMap[key] = deferred
+                    currentUIOperation = deferred
+                }
+            }
+        }
+
+        Logger.shared.debug(TAG, "Starting new $operationName for $key")
 
         return try {
             val result = operation()
