@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.9.2_76092"
+val versionName = "6.9.2_76095"
 
 plugins {
     id("com.android.library")
