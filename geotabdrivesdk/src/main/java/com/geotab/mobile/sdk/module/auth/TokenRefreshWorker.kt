@@ -1,4 +1,4 @@
-package com.geotab.mobile.sdk.module.login
+package com.geotab.mobile.sdk.module.auth
 
 import android.content.Context
 import androidx.work.CoroutineWorker
@@ -7,8 +7,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.Data
 import com.geotab.mobile.sdk.logging.Logger
-import com.geotab.mobile.sdk.module.auth.AuthUtil
-import com.geotab.mobile.sdk.module.auth.AuthError
 import java.util.concurrent.TimeUnit
 
 class TokenRefreshWorker(

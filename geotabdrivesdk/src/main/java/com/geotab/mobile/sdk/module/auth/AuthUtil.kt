@@ -21,7 +21,6 @@ import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageReposito
 import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
-import com.geotab.mobile.sdk.module.login.TokenRefreshWorker
 import com.geotab.mobile.sdk.util.JsonUtil
 import kotlinx.coroutines.CancellableContinuation
 import java.io.BufferedWriter
@@ -85,9 +84,6 @@ class AuthUtil(
     var authService: AuthorizationService? = null
     private var authState: AuthState? = null
     private var currentGeotabAuthState: GeotabAuthState? = null
-
-    // TODO: When LoginModule is removed, we can remove this flag as well
-    private var isFromLoginModule = false
 
     // Token refresh retry tracking
     private val retryAttempts: MutableMap<String, Int> = mutableMapOf()
@@ -219,7 +215,6 @@ class AuthUtil(
      * @param username The username to login
      * @param redirectScheme OAuth redirect URI
      * @param ephemeralSession Whether this is an ephemeral session
-     * @param comingFromLoginModule Whether this call is from LoginModule (temporary flag)
      * @return AuthToken on successful login
      * @throws Exception on login failure
      */
@@ -229,8 +224,7 @@ class AuthUtil(
         discoveryUri: Uri,
         username: String,
         redirectScheme: Uri,
-        ephemeralSession: Boolean = false,
-        comingFromLoginModule: Boolean = false
+        ephemeralSession: Boolean = false
     ): AuthToken = withContext(authScope.coroutineContext) {
         return@withContext authCoordinator.performLogin(username) {
             performLoginInternal(
@@ -239,8 +233,7 @@ class AuthUtil(
                 discoveryUri,
                 username,
                 redirectScheme,
-                ephemeralSession,
-                comingFromLoginModule
+                ephemeralSession
             )
         }
     }
@@ -251,12 +244,11 @@ class AuthUtil(
         discoveryUri: Uri,
         username: String,
         redirectScheme: Uri,
-        ephemeralSession: Boolean,
-        comingFromLoginModule: Boolean
+        ephemeralSession: Boolean
     ): AuthToken {
         // Pre-login cleanup runs synchronously BEFORE async OAuth flow
         // This ensures it executes while coordinator lock is held, preventing race conditions
-        if (!comingFromLoginModule && !ephemeralSession) {
+        if (!ephemeralSession) {
             logoutExistingUserBeforeLogin(context, username)
         }
 
@@ -265,7 +257,6 @@ class AuthUtil(
 
             authScope.launch {
                 Logger.shared.debug("$TAG.performLoginInternal", "Starting login for user: $username")
-                isFromLoginModule = comingFromLoginModule
 
                 // Store metadata BEFORE launching (includes ephemeralSession to avoid race conditions)
                 pendingAuthMetadata = AuthMetadata(
@@ -364,15 +355,13 @@ class AuthUtil(
         clientId: String,
         username: String,
         redirectScheme: Uri,
-        ephemeralSession: Boolean,
-        comingFromLoginModule: Boolean
+        ephemeralSession: Boolean
     ): AuthToken {
         return suspendCancellableCoroutine { continuation ->
             this.loginCallback = createLoginCallback(continuation, "performAuthorizationFlow")
 
             authScope.launch {
                 Logger.shared.debug("$TAG.performAuthorizationFlow", "Starting authorization flow for user: $username")
-                isFromLoginModule = comingFromLoginModule
 
                 // Store metadata BEFORE launching (includes ephemeralSession to avoid race conditions)
                 pendingAuthMetadata = AuthMetadata(
@@ -503,8 +492,7 @@ class AuthUtil(
                     clientId = clientId,
                     username = username,
                     redirectScheme = redirectUri,
-                    ephemeralSession = ephemeralSession,
-                    comingFromLoginModule = false
+                    ephemeralSession = ephemeralSession
                 )
             }
         } catch (e: Exception) {
@@ -908,25 +896,13 @@ class AuthUtil(
         // Persist token BEFORE invoking callback
         // This ensures storage is updated before user's JavaScript callback fires
         // preventing race condition where next login's cleanup doesn't see this token
-        if (!isFromLoginModule) {
-            insertToken(geotabAuthState)
-            resetRetryAttempts(username)
-            rescheduleTokenRefreshWorker(context, geotabAuthState.username)
-        }
+        insertToken(geotabAuthState)
+        resetRetryAttempts(username)
+        rescheduleTokenRefreshWorker(context, geotabAuthState.username)
 
         // Invoke callback AFTER token is persisted to storage
         loginCallback?.let {
-            // TODO: When LoginModule is removed, we can remove this check
-            val authToken = if (isFromLoginModule) {
-                AuthToken(
-                    accessToken = tokenResponse.accessToken ?: "",
-                    refreshToken = tokenResponse.refreshToken ?: "",
-                    idToken = tokenResponse.idToken ?: ""
-                )
-            } else {
-                AuthToken(accessToken = tokenResponse.accessToken ?: "")
-            }
-
+            val authToken = AuthToken(accessToken = tokenResponse.accessToken ?: "")
             it(Success(JsonUtil.toJson(authToken)))
         }
     }

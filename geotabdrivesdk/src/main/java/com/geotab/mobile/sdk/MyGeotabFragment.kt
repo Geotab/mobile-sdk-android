@@ -35,7 +35,6 @@ import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.browser.BrowserModule
 import com.geotab.mobile.sdk.module.device.DeviceModule
-import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.sso.SSOModule
 import com.geotab.mobile.sdk.module.webview.WebViewModule
 import com.geotab.mobile.sdk.permission.Permission
@@ -139,8 +138,9 @@ class MyGeotabFragment :
     private val authUtil: AuthUtil by lazy {
         AuthUtil.init(secureStorageRepository, STORAGE_PREFIX)
     }
-    private var loginModule: LoginModule? = null
-    private var authModule: AuthModule? = null
+    private val authModule: AuthModule by lazy {
+        AuthModule(authUtil)
+    }
 
     private val secureStorageRepository: SecureStorageRepository by lazy {
         SecureStorageRepository(
@@ -161,7 +161,8 @@ class MyGeotabFragment :
             context?.let { BrowserModule(this.parentFragmentManager, it) },
             webViewModule,
             ssoModule,
-            appModule
+            appModule,
+            authModule
         )
     }
 
@@ -279,20 +280,12 @@ class MyGeotabFragment :
             webView.visibility = View.VISIBLE
             errorView.visibility = View.GONE
         }
-        if (DriveSdkConfig.includeAppAuthModules) {
-            loginModule?.let { module ->
-                with(module) {
-                    initValues(requireActivity())
-                }
-            }
-            authModule?.let { module ->
-                with(module) {
-                    initValues(requireActivity())
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.IO) {
-                            authUtil.startTokenRefresh(requireContext())
-                        }
-                    }
+
+        with(authModule) {
+            initValues(requireActivity())
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    authUtil.startTokenRefresh(requireContext())
                 }
             }
         }
@@ -392,13 +385,6 @@ class MyGeotabFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
-
-        if (DriveSdkConfig.includeAppAuthModules) {
-            loginModule = LoginModule(authUtil)
-            authModule = AuthModule(authUtil)
-            loginModule?.let { this.modules.add(it) }
-            authModule?.let { this.modules.add(it) }
-        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")

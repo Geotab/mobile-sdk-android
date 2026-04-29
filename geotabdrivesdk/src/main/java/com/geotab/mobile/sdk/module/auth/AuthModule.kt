@@ -7,12 +7,14 @@ import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.module.Module
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import java.lang.ref.WeakReference
 import net.openid.appauth.AuthorizationService
 
 class AuthModule(
     @Transient private val authUtil: AuthUtil
 ) : Module(MODULE_NAME) {
     private var isAuthServiceDisposed = false
+    private var initializedActivityRef: WeakReference<ComponentActivity>? = null
 
     @Transient
     lateinit var context: Context
@@ -23,6 +25,7 @@ class AuthModule(
         const val MODULE_NAME = "auth"
         const val TAG = "authModule"
         const val USERNAME_REQUIRED_ERROR_MESSAGE = "Username is required"
+        const val LOGIN_SCHEME_ARGUMENT_ERROR_MESSAGE = "Login redirect scheme not found in resources. Please ensure the string resource is defined with the name [REPLACE]"
     }
 
     init {
@@ -32,9 +35,13 @@ class AuthModule(
     }
 
     fun initValues(activity: ComponentActivity) {
+        if (initializedActivityRef?.get() === activity) return
+        initializedActivityRef = WeakReference(activity)
         context = activity.applicationContext
         authUtil.authService = AuthorizationService(context)
-
+        authUtil.activityResultLauncherFunction(
+            activityForResult = activity
+        )
         authUtil.logoutActivityResultLauncherFunction(
             activityForResult = activity
         )

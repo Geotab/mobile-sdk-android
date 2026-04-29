@@ -63,7 +63,6 @@ import com.geotab.mobile.sdk.module.state.StateModule
 import com.geotab.mobile.sdk.module.user.DriverActionNecessaryCallbackType
 import com.geotab.mobile.sdk.module.dutyStatusLog.GetDutyStatusLogFunction
 import com.geotab.mobile.sdk.module.dutyStatusLog.GetCurrentDrivingLogFunction
-import com.geotab.mobile.sdk.module.login.LoginModule
 import com.geotab.mobile.sdk.module.user.GetAllUsersFunction
 import com.geotab.mobile.sdk.module.user.GetAvailabilityFunction
 import com.geotab.mobile.sdk.module.user.GetHosRuleSetFunction
@@ -261,9 +260,9 @@ class DriveFragment :
         AuthUtil.init(secureStorageRepository, STORAGE_PREFIX)
     }
 
-    private var loginModule: LoginModule? = null
-    private var authModule: AuthModule? = null
-
+    private val authModule: AuthModule by lazy {
+        AuthModule(authUtil)
+    }
     private val secureStorageRepository: SecureStorageRepository by lazy {
         SecureStorageRepository(
             requireContext().packageName,
@@ -297,7 +296,8 @@ class DriveFragment :
             geolocationModule,
             ioxbleModule,
             ssoModule,
-            secureStorageModule
+            secureStorageModule,
+            authModule
         )
     }
 
@@ -381,20 +381,11 @@ class DriveFragment :
             startForegroundService()
             driveReadyCallback()
         }
-        if (DriveSdkConfig.includeAppAuthModules) {
-            loginModule?.let { module ->
-                with(module) {
-                    initValues(requireActivity())
-                }
-            }
-            authModule?.let { module ->
-                with(module) {
-                    initValues(requireActivity())
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.IO) {
-                            authUtil.startTokenRefresh(requireContext())
-                        }
-                    }
+        with(authModule) {
+            initValues(requireActivity())
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    authUtil.startTokenRefresh(requireContext())
                 }
             }
         }
@@ -490,12 +481,6 @@ class DriveFragment :
             this.modules = ArrayList(modules)
         }
         this.modules.addAll(modulesInternal.filterNotNull())
-        if (DriveSdkConfig.includeAppAuthModules) {
-            loginModule = LoginModule(authUtil)
-            authModule = AuthModule(authUtil)
-            loginModule?.let { this.modules.add(it) }
-            authModule?.let { this.modules.add(it) }
-        }
         logger.info(TAG, "modules initialized")
     }
 

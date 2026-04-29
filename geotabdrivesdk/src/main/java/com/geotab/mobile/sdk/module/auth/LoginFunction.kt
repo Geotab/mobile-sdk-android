@@ -11,7 +11,7 @@ import com.geotab.mobile.sdk.module.Failure
 import com.geotab.mobile.sdk.module.ModuleFunction
 import com.geotab.mobile.sdk.module.Result
 import com.geotab.mobile.sdk.module.Success
-import com.geotab.mobile.sdk.module.login.LoginModule.Companion.LOGIN_SCHEME_ARGUMENT_ERROR_MESSAGE
+import com.geotab.mobile.sdk.module.auth.AuthModule.Companion.LOGIN_SCHEME_ARGUMENT_ERROR_MESSAGE
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import java.lang.reflect.Type
