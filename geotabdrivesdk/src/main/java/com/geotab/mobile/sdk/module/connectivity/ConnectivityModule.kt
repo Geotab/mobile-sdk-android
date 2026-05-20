@@ -45,10 +45,10 @@ class ConnectivityModule(
 
     override fun scripts(context: Context): String {
         var scripts = super.scripts(context)
-        val type = getNetworkType()
-
-        val connectivityJson =
-            stateJson(type != ConnectivityType.NONE && type != ConnectivityType.UNKNOWN)
+        // Default to offline to avoid a Binder IPC on the main thread.
+        // Per Android docs, registerDefaultNetworkCallback() triggers onAvailable() immediately
+        // if a default network is already active, which will push the real state shortly after.
+        val connectivityJson = stateJson(false)
         scripts += """window.$geotabModules.$name.state = $connectivityJson;"""
         return scripts
     }
