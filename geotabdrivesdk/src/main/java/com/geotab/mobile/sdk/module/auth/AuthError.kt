@@ -265,14 +265,14 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
             is NoExternalUserAgent -> "No external user agent available."
             is UserCancelledFlow -> "User cancelled the authentication flow."
             is InvalidRedirectScheme -> "Login redirect scheme key $schemeKey not found in AndroidManifest.xml."
-            is FailedToSaveAuthState -> "Failed to save auth state for user $username: ${underlyingError.localizedMessage}"
-            is UsernameMismatch -> "Username mismatch: expected '$expected' but access token contains '$actual'"
-            is NoAccessTokenFoundError -> "No auth token found for user $username"
+            is FailedToSaveAuthState -> "Failed to save auth state: ${underlyingError.localizedMessage}"
+            is UsernameMismatch -> mismatchReason
+            is NoAccessTokenFoundError -> "No auth token found"
             is TokenRefreshFailed -> {
                 if (requiresReauthentication) {
-                    "Token refresh failed for user $username. Re-authentication required: ${underlyingError.localizedMessage}"
+                    "Token refresh failed. Re-authentication required: ${underlyingError.localizedMessage}"
                 } else {
-                    "Token refresh failed for user $username. Please try again: ${underlyingError.localizedMessage}"
+                    "Token refresh failed. Please try again: ${underlyingError.localizedMessage}"
                 }
             }
             is RevokeTokenFailed -> "Token revocation failed: ${underlyingError.localizedMessage}"
@@ -299,7 +299,6 @@ sealed class AuthError : Error(GeotabDriveError.AUTH_FAILED_ERROR) {
      * - message: Human-readable error message
      * - recoverable: Whether error is recoverable (can retry)
      * - requiresReauthentication: Whether re-authentication is needed (optional)
-     * - username: Associated username (optional)
      * - underlyingError: Details about underlying cause (optional)
      */
     val errorDescription: String

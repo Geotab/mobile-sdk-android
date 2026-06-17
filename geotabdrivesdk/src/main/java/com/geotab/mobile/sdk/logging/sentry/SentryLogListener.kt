@@ -30,16 +30,35 @@ enum class SentryEnvironment(val value: String) {
 }
 
 /**
- * Configuration for SentryLogger initialization
+ * Configuration for SentryLogger initialization.
+ *
+ * Sample rates control the per-level probability of forwarding non-exception logs
+ * to the Sentry Explore > Logs tab. They do not affect the Issues tab: logs with
+ * exceptions, structured events (isSentryEvent=true), and crashes always flow
+ * through unsampled via the captureEvent path.
+ *
+ * Sample rates have no defaults, so callers must supply explicit values. The compiler
+ * catches any new construction site that would otherwise blow the Sentry Logs quota.
  */
 data class SentryConfig(
     val dsn: String,
     val environment: SentryEnvironment,
     val packageInfo: PackageInfo,
+    val warnLogsSampleRate: Double, // Fraction of WARN logs forwarded to Sentry Logs tab
+    val errorLogsSampleRate: Double, // Fraction of ERROR logs forwarded to Sentry Logs tab
     val debug: Boolean = false,
-    val captureLevel: SentryLevel = SentryLevel.INFO, // Minimum level to capture as events
+    val captureLevel: SentryLevel = SentryLevel.WARNING, // Minimum level to capture; INFO and below dropped at source
     val sendDebugLogs: Boolean = false // Whether to send DEBUG logs as breadcrumbs
-)
+) {
+    init {
+        require(warnLogsSampleRate in 0.0..1.0) {
+            "warnLogsSampleRate must be in [0.0, 1.0], got $warnLogsSampleRate"
+        }
+        require(errorLogsSampleRate in 0.0..1.0) {
+            "errorLogsSampleRate must be in [0.0, 1.0], got $errorLogsSampleRate"
+        }
+    }
+}
 
 /**
  * Listener that integrates with Sentry for crash reporting and error tracking.
@@ -53,7 +72,9 @@ data class SentryConfig(
 @Keep
 class SentryLogListener private constructor(
     private val captureLevel: SentryLevel,
-    private val sendDebugLogs: Boolean
+    private val sendDebugLogs: Boolean,
+    private val warnLogsSampleRate: Double,
+    private val errorLogsSampleRate: Double
 ) : LogListener {
 
     companion object {
@@ -61,6 +82,27 @@ class SentryLogListener private constructor(
 
         @VisibleForTesting
         var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+        // Injected for testing; controls per-log random sampling decision
+        @VisibleForTesting
+        internal var random: () -> Double = { kotlin.random.Random.nextDouble() }
+
+        @VisibleForTesting
+        internal fun createForTest(
+            captureLevel: SentryLevel = SentryLevel.WARNING,
+            sendDebugLogs: Boolean = false,
+            warnLogsSampleRate: Double = 0.01,
+            errorLogsSampleRate: Double = 0.01
+        ): SentryLogListener {
+            require(warnLogsSampleRate in 0.0..1.0) { "warnLogsSampleRate must be in [0.0, 1.0], got $warnLogsSampleRate" }
+            require(errorLogsSampleRate in 0.0..1.0) { "errorLogsSampleRate must be in [0.0, 1.0], got $errorLogsSampleRate" }
+            return SentryLogListener(
+                captureLevel = captureLevel,
+                sendDebugLogs = sendDebugLogs,
+                warnLogsSampleRate = warnLogsSampleRate,
+                errorLogsSampleRate = errorLogsSampleRate
+            )
+        }
 
         /**
          * Creates a SentryLogListener instance with Sentry initialization on background thread.
@@ -107,7 +149,9 @@ class SentryLogListener private constructor(
                 // Return the constructed instance
                 SentryLogListener(
                     captureLevel = config.captureLevel,
-                    sendDebugLogs = config.sendDebugLogs
+                    sendDebugLogs = config.sendDebugLogs,
+                    warnLogsSampleRate = config.warnLogsSampleRate,
+                    errorLogsSampleRate = config.errorLogsSampleRate
                 )
             }
         }
@@ -123,17 +167,20 @@ class SentryLogListener private constructor(
     override fun onLogEvent(event: LogEvent) {
         val sentryLevel = event.level.toSentryLevel()
 
-        // Send to Sentry if level is high enough
+        // Breadcrumbs attach to Issues (no Logs quota impact). Captured outside
+        // the captureLevel gate so INFO/WARN breadcrumbs still provide context on
+        // future exceptions. Sentry events manage their own scope, skip breadcrumb.
+        if (!event.isSentryEvent && (sentryLevel != SentryLevel.DEBUG || sendDebugLogs)) {
+            addBreadcrumb(sentryLevel, event.tag, event.message)
+        }
+
+        // Logs/Events dispatch gated by captureLevel. Callers of Logger.shared.event()
+        // must use WARN or higher in prod (captureLevel=WARNING); INFO/DEBUG events
+        // are dropped here.
         if (sentryLevel.ordinal >= captureLevel.ordinal) {
             if (event.isSentryEvent) {
-                // Explicit Sentry event - always creates event
                 sendSentryEvent(sentryLevel, event.tag, event.message, event.exception, event.tags, event.context)
             } else {
-                // Simple log - only add breadcrumbs (unless it's DEBUG OR sendDebugLogs is false)
-                if (sentryLevel != SentryLevel.DEBUG || sendDebugLogs) {
-                    addBreadcrumb(sentryLevel, event.tag, event.message)
-                }
-
                 sendSentryLog(sentryLevel, event.tag, event.message, event.exception)
             }
         }
@@ -152,26 +199,31 @@ class SentryLogListener private constructor(
     /**
      * Sends a log to Sentry. Logs without exceptions are sent to the Logs tab,
      * while logs with exceptions are sent as events to the Issues tab.
+     *
+     * The Logs tab path applies per-level sampling (warnLogsSampleRate / errorLogsSampleRate)
+     * to stay within Sentry's Logs ingestion quota. The Issues tab path is never sampled.
      */
     private fun sendSentryLog(level: SentryLevel, tag: String, message: String, exception: Throwable? = null) {
         val formattedMessage = "[$tag] $message"
 
         if (exception == null) {
-            // No exception: send to Sentry Explore > Logs
+            // No exception: send to Sentry Explore > Logs (apply per-level sampling)
+            val sampleRate = when (level) {
+                SentryLevel.WARNING -> warnLogsSampleRate
+                SentryLevel.ERROR -> errorLogsSampleRate
+                SentryLevel.FATAL -> 1.0
+                else -> return
+            }
+            if (random() > sampleRate) return // Sampled out, drop this log entry
+
             when (level) {
-                SentryLevel.DEBUG -> {
-                    // Only send DEBUG logs if debugging is enabled
-                    if (sendDebugLogs) {
-                        Sentry.logger().debug(formattedMessage)
-                    }
-                }
-                SentryLevel.INFO -> Sentry.logger().info(formattedMessage)
                 SentryLevel.WARNING -> Sentry.logger().warn(formattedMessage)
                 SentryLevel.ERROR -> Sentry.logger().error(formattedMessage)
                 SentryLevel.FATAL -> Sentry.logger().fatal(formattedMessage)
+                else -> Unit
             }
         } else {
-            // Has exception: send as Event to Issues tab
+            // Has exception: send as Event to Issues tab (NEVER sampled)
             val event = SentryEvent(exception)
             event.level = level
             event.message = Message().apply { formatted = formattedMessage }

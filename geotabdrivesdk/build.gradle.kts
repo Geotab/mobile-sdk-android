@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.9.4_76184"
+val versionName = "6.9.4_76240"
 
 plugins {
     id("com.android.library")
@@ -153,6 +153,7 @@ dependencies {
     api("net.openid:appauth:0.11.1")
     // Optional Sentry dependency for logging integration
     compileOnly("io.sentry:sentry-android:8.25.0")
+    testImplementation("io.sentry:sentry-android:8.25.0")
     implementation("androidx.constraintlayout:constraintlayout:2.0.3")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.1")

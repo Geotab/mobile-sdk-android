@@ -840,7 +840,7 @@ class AuthUtil(
                 }
                 append(": ${authError.fallbackErrorMessage}")
             }
-            Logger.shared.warn(
+            Logger.shared.debug(
                 "$TAG.sendAuthErrorMessage",
                 logMessage
             )
@@ -911,9 +911,9 @@ class AuthUtil(
         try {
             val tokensList = getAllTokens()
             val geotabAuthState = getCredentialsFromUsername(username, tokensList) ?: run {
-                Logger.shared.error(
+                Logger.shared.info(
                     "$TAG.getAuthState",
-                    "No auth state found for user: $username"
+                    "No auth state found for requested user"
                 )
 
                 // Since we couldn't find a token for the user, ensure authState is null

@@ -11,7 +11,6 @@ import com.google.gson.annotations.SerializedName
  * @property message Human-readable error message
  * @property recoverable Whether this error is recoverable (can retry)
  * @property requiresReauthentication Whether this error requires user re-authentication (optional, only for token refresh)
- * @property username Username associated with the error (optional)
  * @property underlyingError Details about the underlying error cause (optional)
  * @property shouldRedirectToLogin Whether the UI should redirect to the login screen when this error occurs
  */
@@ -28,9 +27,6 @@ data class AuthErrorResponse(
 
     @SerializedName("requiresReauthentication")
     val requiresReauthentication: Boolean? = null,
-
-    @SerializedName("username")
-    val username: String? = null,
 
     @SerializedName("underlyingError")
     val underlyingError: String? = null,
@@ -52,7 +48,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = authError.requiresReauthentication,
-                    username = authError.username,
                     underlyingError = authError.underlyingError.localizedMessage,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -62,7 +57,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = authError.username,
                     underlyingError = authError.underlyingError.localizedMessage,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -72,8 +66,7 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = authError.expected,
-                    underlyingError = "Actual username: ${authError.actual}",
+                    underlyingError = null,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
 
@@ -82,7 +75,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = authError.username,
                     underlyingError = null,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -92,7 +84,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = null,
                     underlyingError = "Missing key: ${authError.schemeKey}",
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -102,7 +93,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = null,
                     underlyingError = authError.underlyingError.localizedMessage,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -112,7 +102,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = null,
                     underlyingError = "HTTP ${authError.statusCode}",
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -122,7 +111,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = null,
                     underlyingError = authError.underlyingError.localizedMessage,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -132,7 +120,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = null,
                     underlyingError = authError.underlyingError?.localizedMessage,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
                 )
@@ -143,7 +130,6 @@ data class AuthErrorResponse(
                     message = authError.fallbackErrorMessage,
                     recoverable = authError.isRecoverable,
                     requiresReauthentication = null,
-                    username = null,
                     underlyingError = null,
                     shouldRedirectToLogin = authError.shouldRedirectToLogin
 

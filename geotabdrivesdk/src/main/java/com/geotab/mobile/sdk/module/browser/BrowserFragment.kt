@@ -16,6 +16,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.Keep
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -23,6 +24,7 @@ import com.geotab.mobile.sdk.BuildConfig
 import com.geotab.mobile.sdk.Error
 import com.geotab.mobile.sdk.R
 import com.geotab.mobile.sdk.databinding.ActivityBrowserBinding
+import com.geotab.mobile.sdk.logging.BroadcastLogLevel
 import com.geotab.mobile.sdk.logging.Logger
 import com.geotab.mobile.sdk.models.enums.GeotabDriveError
 import com.geotab.mobile.sdk.module.Failure
@@ -44,6 +46,9 @@ class BrowserFragment : Fragment() {
     var script: String? = null
     var isUserAgentKillSwitchOn = false
     private var isCallbackCompleted = false
+    private var isDismissed = false
+    private var reachedCallbackPage = false
+    internal var isBeingReplaced = false
 
     private val userAgentUtil: UserAgentUtil by lazy {
         UserAgentUtil(requireContext())
@@ -69,6 +74,29 @@ class BrowserFragment : Fragment() {
                     putString(ARG_URL, url)
                 }
             }
+
+        // First match wins. reachedCallbackPage is checked before isDismissed/isBeingReplaced
+        // because "reached sso.html but token hop didn't finish" is the highest-signal
+        // diagnostic, and it should not be masked by a concurrent dismissal or relaunch.
+        internal fun samlCallbackReasonOnDestroy(
+            isCallbackCompleted: Boolean,
+            reachedCallbackPage: Boolean,
+            isDismissed: Boolean,
+            isBeingReplaced: Boolean
+        ): String? = when {
+            isCallbackCompleted -> null
+            reachedCallbackPage -> SSOModule.SAML_CLOSED_AFTER_CALLBACK
+            isBeingReplaced -> SSOModule.SAML_LAUNCHING_BROWSER
+            isDismissed -> SSOModule.SAML_DISMISSED
+            else -> SSOModule.SAML_UNEXPECTED_CLOSE
+        }
+
+        // SAML_UNEXPECTED_CLOSE needs a native Sentry event. It fires when the host
+        // (activity/process) is torn down, which also destroys the Drive WebView that the
+        // samlCallback -> evaluate bridge depends on, so the web Sentry pipeline can't
+        // receive it.
+        internal fun shouldCaptureSamlCloseNatively(reason: String): Boolean =
+            reason == SSOModule.SAML_UNEXPECTED_CLOSE
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,6 +113,7 @@ class BrowserFragment : Fragment() {
             override fun onReceive(contxt: Context?, intent: Intent?) {
                 when (intent?.action) {
                     "close" -> {
+                        isDismissed = true
                         closeFragment()
                     }
                 }
@@ -104,6 +133,17 @@ class BrowserFragment : Fragment() {
         configureWebViewScript()
 
         setupToolBar()
+
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    isDismissed = true
+                    isEnabled = false
+                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        )
     }
 
     override fun onResume() {
@@ -128,7 +168,7 @@ class BrowserFragment : Fragment() {
             userAgentString = if (isUserAgentKillSwitchOn) {
                 userAgentUtil.getUserAgent(webView.settings.userAgentString)
             } else {
-                Logger.shared.error(
+                Logger.shared.debug(
                     TAG,
                     "UserAgent: ${userAgentUtil.getUserAgent(webView.settings.userAgentString)}"
                 )
@@ -155,6 +195,7 @@ class BrowserFragment : Fragment() {
                 if (url?.contains("sso.html", true) != true) {
                     return
                 }
+                reachedCallbackPage = true
                 view?.let { webView ->
                     if (script != null) {
                         webView.evaluateJavascript(script!!) {
@@ -191,8 +232,23 @@ class BrowserFragment : Fragment() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.removeAllCookies {}
 
-        if (!isCallbackCompleted) {
-            onError(SSOModule.SAML_LAUNCHING_BROWSER)
+        val samlCloseReason = samlCallbackReasonOnDestroy(
+            isCallbackCompleted = isCallbackCompleted,
+            reachedCallbackPage = reachedCallbackPage,
+            isDismissed = isDismissed,
+            isBeingReplaced = isBeingReplaced
+        )
+        samlCloseReason?.let { reason ->
+            if (shouldCaptureSamlCloseNatively(reason)) {
+                Logger.shared.event(
+                    level = BroadcastLogLevel.ERROR,
+                    tag = TAG,
+                    message = reason,
+                    exception = Error(GeotabDriveError.MODULE_SAML_ERROR, reason),
+                    tags = mapOf("saml_close_reason" to reason)
+                )
+            }
+            onError(reason)
         }
     }
 
@@ -209,6 +265,7 @@ class BrowserFragment : Fragment() {
             ContextCompat.getDrawable(it, R.drawable.ic_baseline_close_24)
         }
         toolBar.setNavigationOnClickListener {
+            isDismissed = true
             closeFragment()
         }
     }

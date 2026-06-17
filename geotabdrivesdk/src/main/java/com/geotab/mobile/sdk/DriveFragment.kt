@@ -34,6 +34,7 @@ import com.geotab.mobile.sdk.models.database.secureStorage.SecureStorageReposito
 import com.geotab.mobile.sdk.module.app.AppModule
 import com.geotab.mobile.sdk.module.app.LastServerUpdatedCallbackType
 import com.geotab.mobile.sdk.module.appearance.AppearanceModule
+import com.geotab.mobile.sdk.module.auth.AuthError
 import com.geotab.mobile.sdk.module.auth.AuthModule
 import com.geotab.mobile.sdk.module.auth.AuthUtil
 import com.geotab.mobile.sdk.module.battery.BatteryModule
@@ -203,8 +204,7 @@ class DriveFragment :
         it.callback(it.result)
 
         if (it.wasPermissionAttributeNull) {
-            Logger.shared.debug(TAG, it.permissions.toString())
-            Logger.shared.error(TAG, "Permissions being asked: ${it.permissions}")
+            logger.warn(TAG, "Permission attribute was null; requested: ${it.permissions}")
         }
     }
     private val takePicture = registerForActivityResult(TakePictureContract()) {
@@ -474,6 +474,29 @@ class DriveFragment :
             }
 
         private const val TAG = "DriveFragment"
+
+        // Bridge failures that reflect expected user/environment state (not logged
+        // in, permission denied, no GPS fix). The auth layer and module call sites
+        // have already surfaced these to the UI; logging at ERROR floods Sentry
+        // with non-actionable noise. Anything not listed here stays at ERROR.
+        internal fun isExpectedBridgeFailure(reason: Error): Boolean {
+            if (reason is AuthError) return !AuthError.shouldBeCaptured(reason)
+            if (reason.getErrorCode() == GeotabDriveError.MODULE_GEOLOCATION_ERROR) {
+                return when (reason.getErrorMessage()) {
+                    GeolocationModule.PERMISSION_DENIED,
+                    GeolocationModule.POSITION_UNAVAILABLE -> true
+                    else -> false
+                }
+            }
+            if (reason.getErrorCode() == GeotabDriveError.MODULE_SAML_ERROR) {
+                return when (reason.getErrorMessage()) {
+                    SSOModule.SAML_LAUNCHING_BROWSER,
+                    SSOModule.SAML_DISMISSED -> true
+                    else -> false
+                }
+            }
+            return false
+        }
     }
 
     private fun initializeModules(modules: List<Module>?) {
@@ -630,11 +653,14 @@ class DriveFragment :
                 val jsScript = when (result) {
                     is Success -> buildSuccessJavaScript(callback, result.value)
                     is Failure -> {
-                        logger.error(
-                            TAG,
-                            "module function call failed, ${result.reason}, $moduleFunction"
-                        )
-                        buildErrorJavaScript(callback, result.reason)
+                        val reason = result.reason
+                        val message = "module function call failed, $reason, $moduleFunction"
+                        if (isExpectedBridgeFailure(reason)) {
+                            logger.debug(TAG, message)
+                        } else {
+                            logger.error(TAG, message)
+                        }
+                        buildErrorJavaScript(callback, reason)
                     }
                 }
                 evaluate(jsScript) {}

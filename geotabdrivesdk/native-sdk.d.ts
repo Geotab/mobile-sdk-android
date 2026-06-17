@@ -569,11 +569,6 @@ declare namespace geotabModules {
             requiresReauthentication?: boolean;
 
             /**
-             * Username associated with this error (if applicable).
-             */
-            username?: string;
-
-            /**
              * Details about the underlying error cause.
              */
             underlyingError?: string;
@@ -600,8 +595,8 @@ declare namespace geotabModules {
          *          • "No data returned from authorization flow" - Authorization response was empty or null
          *          • "Token exchange failed" - Failed to exchange authorization code for access token
          *          • "Username (state) is null" - Authorization response missing state parameter
-         *          • "Username mismatch: expected '<expected>' but access token contains '<actual>'" - Token username doesn't match requested username
-         *          • "Failed to save auth state for user <username>: <details>" - Unable to persist tokens to secure storage
+         *          • "Username mismatch in non-ephemeral session - Stale browser cookies from previous user" or "Username mismatch in ephemeral session - potential security issue" - Token username doesn't match requested username
+         *          • "Failed to save auth state: <details>" - Unable to persist tokens to secure storage
          *          • "Network error: <details>" - Network connectivity issue during OAuth flow
          *          • "Login failed" - Generic fallback for unexpected errors
          *
@@ -659,9 +654,9 @@ declare namespace geotabModules {
           * @param callback:
           *      - result: string. A GeotabAuthState object containing { accessToken: string }
           *      - err: Error. Possible error messages:
-          *          • "No auth token found for user <username>" - User has never logged in or tokens were cleared
-          *          • "Token refresh failed for user <username>. Please try again: <details>" - Network error during refresh (recoverable); token state preserved for retry
-          *          • "Token refresh failed for user <username>. Re-authentication required: <details>" - Refresh token invalid/revoked; user must re-authenticate
+          *          • "No auth token found" - User has never logged in or tokens were cleared
+          *          • "Token refresh failed. Please try again: <details>" - Network error during refresh (recoverable); token state preserved for retry
+          *          • "Token refresh failed. Re-authentication required: <details>" - Refresh token invalid/revoked; user must re-authenticate
           *          • "Network error: <details>" - Connectivity issue (recoverable, will retry with exponential backoff)
           *          • "Failed retrieving session." - Could not load auth state from secure storage
           *          • "Get token failed" - Generic fallback for unexpected errors
@@ -730,7 +725,7 @@ declare namespace geotabModules {
           * @param callback:
           *      - result: string. Success message "Logged out successfully"
           *      - err: Error. Possible error messages:
-          *          • "No valid token found for user <username>" - User is not logged in or already logged out
+          *          • "No valid token found" - User is not logged in or already logged out
           *          • "Failed to create end session request" - Invalid OAuth configuration or missing ID token
           *          • "Logout failed or was cancelled" - User cancelled the logout flow in the browser
           *          • "Network error: <details>" - Connectivity issue during logout

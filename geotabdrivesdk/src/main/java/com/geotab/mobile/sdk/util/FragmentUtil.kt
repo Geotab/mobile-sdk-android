@@ -4,6 +4,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
 import com.geotab.mobile.sdk.R
+import com.geotab.mobile.sdk.module.browser.BrowserFragment
 
 /**
  * If a fragment with the given tag already exists, will replace with the given fragment.
@@ -16,6 +17,7 @@ import com.geotab.mobile.sdk.R
 internal fun replaceFragment(fragment: Fragment, tag: String, fragmentManager: FragmentManager) {
     val browserFragment = fragmentManager.findFragmentByTag(tag)
     if (browserFragment != null) {
+        (browserFragment as? BrowserFragment)?.isBeingReplaced = true
         fragmentManager.commit(allowStateLoss = true) {
             remove(browserFragment)
         }

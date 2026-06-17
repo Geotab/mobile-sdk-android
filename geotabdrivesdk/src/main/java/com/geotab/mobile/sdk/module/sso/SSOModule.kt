@@ -15,6 +15,9 @@ class SSOModule(
 
     companion object {
         const val SAML_LAUNCHING_BROWSER = "Closing to launch another browser"
+        const val SAML_DISMISSED = "SAML login window dismissed"
+        const val SAML_CLOSED_AFTER_CALLBACK = "SAML login window closed after reaching callback"
+        const val SAML_UNEXPECTED_CLOSE = "SAML login window closed unexpectedly"
         const val MODULE_NAME = "sso"
     }
 
