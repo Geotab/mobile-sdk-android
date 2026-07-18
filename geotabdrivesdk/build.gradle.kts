@@ -1,6 +1,6 @@
 import java.util.Properties
 
-val versionName = "6.9.4_76265"
+val versionName = "6.9.4_76311"
 
 plugins {
     id("com.android.library")
@@ -39,6 +39,7 @@ android {
     }
 
     testOptions {
+        unitTests.isIncludeAndroidResources = true
         unitTests.all { test ->
             test.testLogging {
                 events("passed", "skipped", "failed")
@@ -241,6 +242,15 @@ kover {
 tasks.register<Copy>("copyTestFiles") {
     from("src/main/assets")
     into("src/test/resources")
+}
+
+tasks.withType<Test> {
+    // isIncludeAndroidResources (above) makes Robolectric load real binary
+    // Android resources for every unit test in this module, which needs
+    // materially more heap than Gradle's forked-test-JVM default (512m) --
+    // without this, the full suite (700+ tests, many Robolectric-backed)
+    // OutOfMemoryErrors partway through.
+    maxHeapSize = "2g"
 }
 
 afterEvaluate {
